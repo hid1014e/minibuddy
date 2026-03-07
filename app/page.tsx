@@ -10,10 +10,11 @@ export default function Home() {
 
   useEffect(() => {
     async function init() {
+      // Supabaseのセッションを取得（localStorageに保存済みなら復元される）
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        // セッションなし → 新規匿名ログイン
+        // セッションなし（初回 or シークレット）→ 新規匿名ログイン
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error || !data.user) return;
         router.replace(
@@ -25,12 +26,14 @@ export default function Home() {
       // セッションあり → プロフィール確認
       const profile = await getProfile(session.user.id);
       if (!profile) {
+        // プロフィール未設定ならニックネーム登録へ
         const challenge = await getActiveChallenge();
         const next = challenge ? `/challenge/${challenge.id}` : '/challenge/new';
         router.replace(`/nickname?uid=${session.user.id}&next=${encodeURIComponent(next)}`);
         return;
       }
 
+      // プロフィールあり → チャレンジへ直行
       const challenge = await getActiveChallenge();
       router.replace(challenge ? `/challenge/${challenge.id}` : '/challenge/new');
     }
