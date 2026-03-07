@@ -40,10 +40,12 @@ export async function startChallenge(theme?: string): Promise<MiniChallenge> {
 }
 
 export async function getActiveChallenge(): Promise<MiniChallenge | null> {
-  await ensureAuth();
+  const user = await ensureAuth();
+  if (!user) return null;
   const { data } = await supabase
     .from('mini_challenges')
     .select()
+    .eq('owner_user_id', user.id)
     .eq('status', 'active')
     .order('started_at', { ascending: false })
     .limit(1)
