@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
-import { MiniChallenge, MiniChallengeDay } from './types';
+import { MiniChallenge, MiniChallengeDay, UserProfile, OthersDayPost } from './types';
 
+// ─── 認証 ────────────────────────────────────────────
 export async function ensureAuth() {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) await supabase.auth.signInAnonymously();
@@ -8,6 +9,24 @@ export async function ensureAuth() {
   return user;
 }
 
+// ─── プロフィール ─────────────────────────────────────
+export async function getProfile(userId: string): Promise<UserProfile | null> {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select()
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data ?? null;
+}
+
+export async function createProfile(userId: string, nickname: string): Promise<void> {
+  const { error } = await supabase
+    .from('user_profiles')
+    .insert({ user_id: userId, nickname });
+  if (error) throw error;
+}
+
+// ─── チャレンジ ───────────────────────────────────────
 export async function startChallenge(theme?: string): Promise<MiniChallenge> {
   const user = await ensureAuth();
   if (!user) throw new Error('auth failed');
@@ -23,7 +42,7 @@ export async function startChallenge(theme?: string): Promise<MiniChallenge> {
 export async function getActiveChallenge(): Promise<MiniChallenge | null> {
   await ensureAuth();
   const { data } = await supabase
-    .from('mini_challenge_days')
+    .from('mini_challenges')
     .select()
     .eq('status', 'active')
     .order('started_at', { ascending: false })
@@ -32,6 +51,18 @@ export async function getActiveChallenge(): Promise<MiniChallenge | null> {
   return data ?? null;
 }
 
+// チャレンジ開始日から今日が何日目か計算（1〜7）
+export function calcTodayDayNumber(startedAt: string): number {
+  const start = new Date(startedAt);
+  const startDate = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const today = new Date();
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffMs = todayDate.getTime() - startDate.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  return Math.min(Math.max(diffDays + 1, 1), 7);
+}
+
+// ─── 日次ログ ─────────────────────────────────────────
 export async function getDays(challengeId: string): Promise<MiniChallengeDay[]> {
   const { data } = await supabase
     .from('mini_challenge_days')
@@ -71,6 +102,7 @@ export async function completeChallenge(challengeId: string) {
     .eq('id', challengeId);
 }
 
+// ─── 集計 ─────────────────────────────────────────────
 export async function getTodayDoneCount(): Promise<number> {
   const { data } = await supabase.rpc('get_today_done_count');
   return data ?? 0;
@@ -81,6 +113,7 @@ export async function getTodayClapCount(): Promise<number> {
   return data ?? 0;
 }
 
+// ─── 拍手 ─────────────────────────────────────────────
 export async function sendClap(userId: string): Promise<'ok' | 'already_clapped'> {
   const today = new Date().toISOString().slice(0, 10);
   const { error } = await supabase
@@ -88,4 +121,103 @@ export async function sendClap(userId: string): Promise<'ok' | 'already_clapped'
     .insert({ user_id: userId, date: today, reaction_type: 'clap' });
   if (error?.code === '23505') return 'already_clapped';
   return 'ok';
+}
+
+// ─── 他人の投稿（同じDay番号、最大3件）────────────────
+export async function getOthersPosts(
+  dayNumber: number,
+  myUserId: string
+): Promise<OthersDayPost[]> {
+  if (dayNumber < 1 || dayNumber > 7) return [];
+
+  // 同じday_numberの全投稿を取得
+  const { data: allDays, error } = await supabase
+    .from('mini_challenge_days')
+    .select(`
+      id,
+      plan,
+      status,
+      day_number,
+      mini_challenges!inner ( owner_user_id, theme )
+    `)
+    .eq('day_number', dayNumber)
+    .limit(50);
+
+  if (error) {
+    console.error('getOthersPosts error:', error);
+    return [];
+  }
+  if (!allDays || allDays.length === 0) return [];
+
+  // 自分以外
+  const others = (allDays as any[]).filter(
+    d => d.mini_challenges.owner_user_id !== myUserId
+  );
+  if (others.length === 0) return [];
+
+  // ランダム3件
+  const shuffled = [...others].sort(() => Math.random() - 0.5).slice(0, 3);
+  const dayIds = shuffled.map(d => d.id);
+  const ownerIds = shuffled.map(d => d.mini_challenges.owner_user_id);
+
+  // チェック数
+  const { data: checks } = await supabase
+    .from('day_checks')
+    .select('target_day_id, checker_id')
+    .in('target_day_id', dayIds);
+
+  // ニックネーム
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('user_id, nickname')
+    .in('user_id', ownerIds);
+
+  return shuffled.map(d => {
+    const dayChecks = (checks ?? []).filter((c: any) => c.target_day_id === d.id);
+    const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
+    return {
+      id: d.id,
+      plan: d.plan.slice(0, 20),
+      status: d.status,
+      day_number: d.day_number,
+      nickname: profile?.nickname ?? '匿名',
+      theme: d.mini_challenges.theme ?? null,
+      check_count: dayChecks.length,
+      already_checked: dayChecks.some((c: any) => c.checker_id === myUserId),
+    };
+  });
+}
+
+// ─── チェック ─────────────────────────────────────────
+export async function checkPost(
+  checkerId: string,
+  targetDayId: string
+): Promise<'ok' | 'already_checked'> {
+  const { error } = await supabase
+    .from('day_checks')
+    .insert({ checker_id: checkerId, target_day_id: targetDayId });
+  if (error?.code === '23505') return 'already_checked';
+  return 'ok';
+}
+
+// 今日自分の投稿を応援してくれた人数
+export async function getMyCheerCount(
+  challengeId: string,
+  dayNumber: number
+): Promise<number> {
+  // 自分のその日の投稿IDを取得
+  const { data: dayData } = await supabase
+    .from('mini_challenge_days')
+    .select('id')
+    .eq('mini_challenge_id', challengeId)
+    .eq('day_number', dayNumber)
+    .maybeSingle();
+  if (!dayData) return 0;
+
+  // そのIDに対するチェック数
+  const { count } = await supabase
+    .from('day_checks')
+    .select('*', { count: 'exact', head: true })
+    .eq('target_day_id', dayData.id);
+  return count ?? 0;
 }

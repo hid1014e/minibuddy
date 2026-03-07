@@ -1,32 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=M+PLUS+Rounded+1c:wght@400;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-pixel: 'Press Start 2P', monospace;
-  --font-body: 'M PLUS Rounded 1c', sans-serif;
-  --bg: #0a0a1a;
-  --purple: #a78bfa;
-  --purple-dark: #7c3aed;
-  --green: #34d399;
-  --red: #fb7185;
-  --gold: #fbbf24;
+  --font-display: 'Fredoka One', cursive;
+  --font-body: 'Nunito', sans-serif;
+  --bg: #f0f4ff;
+  --white: #ffffff;
+  --green: #58cc02;
+  --green-dark: #46a302;
+  --green-light: #d7f5b1;
+  --blue: #1cb0f6;
+  --blue-dark: #0a91d1;
+  --blue-light: #ddf4ff;
+  --orange: #ff9600;
+  --orange-light: #fff3d7;
+  --red: #ff4b4b;
+  --red-light: #ffdfe0;
+  --purple: #ce82ff;
+  --purple-dark: #9c44c0;
+  --purple-light: #f1d9ff;
+  --yellow: #ffc800;
+  --yellow-light: #fff8d7;
+  --gray: #afafaf;
+  --gray-light: #e5e5e5;
+  --text: #3c3c3c;
+  --text-light: #777777;
 }
 
-* {
-  box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
   background: var(--bg);
-  color: #e8e8ff;
+  color: var(--text);
   font-family: var(--font-body);
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
-.font-pixel {
-  font-family: var(--font-pixel);
-}
+.font-display { font-family: var(--font-display); }

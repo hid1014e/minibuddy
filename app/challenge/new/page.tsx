@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import { startChallenge } from '@/lib/api';
 
 const THEMES = [
-  { label: '副業', icon: '💼' },
-  { label: '勉強', icon: '📚' },
-  { label: '運動', icon: '🏃' },
-  { label: '生活', icon: '🌱' },
+  { label: '健康', icon: '💪', color: '#58cc02', bg: '#f0fce4', shadow: '#c8f59a' },
+  { label: 'お金', icon: '💰', color: '#ff9600', bg: '#fff3d7', shadow: '#ffe0a0' },
+  { label: '夢', icon: '🌟', color: '#ffc800', bg: '#fff8d7', shadow: '#ffe880' },
+  { label: 'キャリア', icon: '🚀', color: '#1cb0f6', bg: '#ddf4ff', shadow: '#b3dfff' },
+  { label: '人間関係', icon: '❤️', color: '#ff4b4b', bg: '#fff0f0', shadow: '#ffc0c0' },
+  { label: 'その他', icon: '✨', color: '#ce82ff', bg: '#f1d9ff', shadow: '#e0b0ff' },
 ];
 
 export default function NewChallengePage() {
@@ -16,10 +18,10 @@ export default function NewChallengePage() {
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleStart() {
+  async function handleStart(theme: string | null) {
     setLoading(true);
     try {
-      const challenge = await startChallenge(selectedTheme ?? undefined);
+      const challenge = await startChallenge(theme ?? undefined);
       router.push(`/challenge/${challenge.id}`);
     } catch (e) {
       console.error(e);
@@ -28,90 +30,117 @@ export default function NewChallengePage() {
   }
 
   return (
-    <div style={{ paddingTop: 40, animation: 'fadeIn 0.3s ease' }}>
+    <div style={{ paddingTop: 40 }}>
       <style>{`
-        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes bounce { from { transform:translateY(0); } to { transform:translateY(-8px); } }
-        @keyframes glow {
-          from { text-shadow: 0 0 10px rgba(150,100,255,0.6); }
-          to   { text-shadow: 0 0 20px rgba(180,130,255,1), 0 0 40px rgba(120,80,255,0.6); }
-        }
+        @keyframes bounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-12px); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        .theme-btn:hover { transform: translateY(-3px); }
+        .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(88,204,2,0.5) !important; }
+        .start-btn:active { transform: translateY(4px); box-shadow: none !important; }
+        .skip-btn:hover { color: #1cb0f6 !important; }
       `}</style>
 
-      <div className="text-center mb-8">
-        <div className="font-pixel text-lg mb-1" style={{ color: '#fff', animation: 'glow 2s ease-in-out infinite alternate' }}>
-          mini<span style={{ color: '#a78bfa' }}>buddy</span>
+      {/* Logo */}
+      <div style={{ textAlign: 'center', marginBottom: 32, animation: 'fadeUp 0.4s ease' }}>
+        <div style={{
+          fontFamily: 'Fredoka One, cursive',
+          fontSize: 32, color: '#58cc02',
+          textShadow: '0 4px 0 #46a302',
+        }}>
+          mini<span style={{ color: '#1cb0f6' }}>buddy</span>
         </div>
       </div>
 
-      <div className="text-center mb-10">
-        <span style={{ fontSize: 56, display: 'block', marginBottom: 20, animation: 'bounce 1s ease-in-out infinite alternate' }}>
-          🎮
-        </span>
-        <div className="font-pixel mb-3" style={{ fontSize: 13, color: '#fff', lineHeight: 2 }}>
+      {/* Hero */}
+      <div style={{ textAlign: 'center', marginBottom: 32, animation: 'fadeUp 0.5s ease' }}>
+        <div style={{ fontSize: 64, animation: 'bounce 2s ease-in-out infinite', display: 'inline-block', marginBottom: 16 }}>
+          🎯
+        </div>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 26, color: '#3c3c3c', marginBottom: 10, lineHeight: 1.3 }}>
           7日チャレンジ
         </div>
-        <p style={{ fontSize: 13, color: '#888', lineHeight: 1.8 }}>
-          1日1分の入力だけ。<br />
-          仲間の気配を感じながら<br />
-          7日間やり切ろう。
+        <p style={{ fontSize: 15, color: '#777', lineHeight: 1.7, margin: 0 }}>
+          毎日1分の入力だけ。<br />
+          仲間の気配を感じながら<br />やり切ろう！
         </p>
       </div>
 
-      <div className="font-pixel mb-3" style={{ fontSize: 9, color: '#a78bfa', letterSpacing: 1 }}>
-        テーマを選ぶ（任意）
-      </div>
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        {THEMES.map(t => (
-          <button
-            key={t.label}
-            onClick={() => setSelectedTheme(selectedTheme === t.label ? null : t.label)}
-            style={{
-              padding: '12px',
-              borderRadius: 12,
-              border: `1px solid ${selectedTheme === t.label ? 'rgba(167,139,250,0.6)' : 'rgba(255,255,255,0.1)'}`,
-              background: selectedTheme === t.label ? 'rgba(167,139,250,0.12)' : 'rgba(255,255,255,0.03)',
-              color: selectedTheme === t.label ? '#a78bfa' : '#aaa',
-              fontFamily: 'M PLUS Rounded 1c, sans-serif',
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-              transition: 'all 0.15s',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
-          >
-            {t.icon} {t.label}
-          </button>
-        ))}
-      </div>
-      <div
-        style={{ fontSize: 12, color: '#555', textAlign: 'center', marginBottom: 24, cursor: 'pointer', textDecoration: 'underline' }}
-        onClick={() => setSelectedTheme(null)}
-      >
-        スキップして開始
+      {/* Theme */}
+      <div style={{
+        background: '#fff', borderRadius: 20, padding: 20,
+        boxShadow: '0 4px 0 #d0d0d0',
+        marginBottom: 20, animation: 'fadeUp 0.6s ease',
+      }}>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 16, color: '#3c3c3c', marginBottom: 14 }}>
+          テーマを選ぼう <span style={{ fontSize: 13, fontFamily: 'Nunito, sans-serif', color: '#afafaf', fontWeight: 600 }}>（任意）</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+          {THEMES.map(t => (
+            <button
+              key={t.label}
+              className="theme-btn"
+              onClick={() => setSelectedTheme(selectedTheme === t.label ? null : t.label)}
+              style={{
+                padding: '14px 6px',
+                borderRadius: 16,
+                border: `3px solid ${selectedTheme === t.label ? t.color : '#e5e5e5'}`,
+                background: selectedTheme === t.label ? t.bg : '#fafafa',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                boxShadow: selectedTheme === t.label
+                  ? `0 4px 0 ${t.shadow}`
+                  : '0 4px 0 #d0d0d0',
+              }}
+            >
+              <span style={{ fontSize: 26 }}>{t.icon}</span>
+              <span style={{
+                fontFamily: 'Fredoka One, cursive', fontSize: 13,
+                color: selectedTheme === t.label ? t.color : '#777',
+              }}>{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
+      {/* Start button */}
       <button
-        onClick={handleStart}
+        onClick={() => handleStart(selectedTheme)}
         disabled={loading}
-        className="font-pixel w-full"
+        className="start-btn"
         style={{
-          padding: '18px',
-          borderRadius: 14,
-          border: 'none',
-          background: loading ? '#444' : 'linear-gradient(135deg, #6d28d9, #7c3aed, #8b5cf6)',
-          color: '#fff',
-          fontSize: 11,
-          letterSpacing: 2,
+          width: '100%', padding: '18px',
+          borderRadius: 16, border: 'none',
+          background: loading ? '#e5e5e5' : '#58cc02',
+          color: loading ? '#afafaf' : '#fff',
+          fontFamily: 'Fredoka One, cursive',
+          fontSize: 20,
           cursor: loading ? 'not-allowed' : 'pointer',
-          boxShadow: loading ? 'none' : '0 6px 30px rgba(109,40,217,0.5)',
-          transition: 'all 0.2s',
+          boxShadow: loading ? 'none' : '0 6px 0 #46a302',
+          transition: 'all 0.15s',
+          marginBottom: 12,
+          animation: 'fadeUp 0.7s ease',
         }}
       >
-        {loading ? 'LOADING...' : '▶ チャレンジ開始'}
+        {loading ? '起動中...' : selectedTheme ? `${THEMES.find(t=>t.label===selectedTheme)?.icon} チャレンジ開始！` : 'チャレンジ開始！🚀'}
+      </button>
+
+      {/* Skip - テーマなしで開始（ちゃんと動く） */}
+      <button
+        onClick={() => handleStart(null)}
+        disabled={loading}
+        className="skip-btn"
+        style={{
+          width: '100%', padding: '12px',
+          background: 'none', border: '2px solid #e5e5e5',
+          borderRadius: 12, cursor: loading ? 'not-allowed' : 'pointer',
+          fontSize: 14, color: '#afafaf',
+          fontFamily: 'Nunito, sans-serif', fontWeight: 700,
+          transition: 'all 0.15s',
+          animation: 'fadeUp 0.8s ease',
+        }}
+      >
+        テーマなしで開始 →
       </button>
     </div>
   );

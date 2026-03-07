@@ -19,15 +19,16 @@ export default function CompletePage() {
   useEffect(() => { load(); }, [load]);
 
   const doneCount = days.filter(d => d.status === 'done').length;
-  const rate = Math.round((doneCount / 7) * 100);
 
-  const reflection = doneCount === 7
-    ? `全7日、完璧に達成！達成率100% 🔥`
+  const hero = doneCount === 7
+    ? { emoji: '🏆', color: '#ff9600', bg: 'linear-gradient(135deg, #fff9e6, #fff3d7)', border: '#ffc800', shadow: '#e0b000', message: '完璧！全7日達成！\nあなたは本物です 🎉' }
     : doneCount >= 5
-    ? `${doneCount}/7日達成（達成率${rate}%）。よくやった！`
-    : `${doneCount}/7日達成。次のチャレンジに活かそう。`;
+    ? { emoji: '🌟', color: '#1cb0f6', bg: 'linear-gradient(135deg, #e8f8ff, #ddf4ff)', border: '#1cb0f6', shadow: '#0a91d1', message: `${doneCount}/7日達成！\n素晴らしい継続力です 👏` }
+    : doneCount >= 3
+    ? { emoji: '💪', color: '#58cc02', bg: 'linear-gradient(135deg, #f0fce4, #e0f8c8)', border: '#58cc02', shadow: '#46a302', message: `${doneCount}/7日達成。\n次はもっとやれる！` }
+    : { emoji: '🌱', color: '#ce82ff', bg: 'linear-gradient(135deg, #f8f0ff, #f1d9ff)', border: '#ce82ff', shadow: '#9c44c0', message: `${doneCount}/7日。\nまず始めたことが大事！` };
 
-  const shareText = `#minibuddy 7日チャレンジ完了！\n${doneCount}/7 達成 🔥\n${days[0]?.plan ? `「${days[0].plan}」から始めて完走しました。` : ''}`;
+  const shareText = `#minibuddy 7日チャレンジ完了！\n${doneCount}/7 達成 🔥`;
 
   async function handleCopy() {
     await navigator.clipboard.writeText(shareText);
@@ -36,84 +37,99 @@ export default function CompletePage() {
   }
 
   return (
-    <div style={{ paddingTop: 32, animation: 'fadeIn 0.3s ease' }}>
+    <div style={{ paddingTop: 32 }}>
       <style>{`
-        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes celebrate { 0% { transform:scale(0) rotate(-10deg); } 60% { transform:scale(1.2) rotate(3deg); } 100% { transform:scale(1) rotate(0deg); } }
+        @keyframes celebrate { 0% { transform:scale(0) rotate(-15deg); } 60% { transform:scale(1.25) rotate(5deg); } 100% { transform:scale(1) rotate(0deg); } }
+        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes bounce { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
       `}</style>
 
-      <div className="text-center mb-6">
-        <div className="font-pixel" style={{ fontSize: 16, color: '#fff' }}>
-          mini<span style={{ color: '#a78bfa' }}>buddy</span>
+      {/* Logo */}
+      <div style={{ textAlign: 'center', marginBottom: 24, animation: 'fadeUp 0.3s ease' }}>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 28, color: '#58cc02', textShadow: '0 3px 0 #46a302' }}>
+          mini<span style={{ color: '#1cb0f6' }}>buddy</span>
         </div>
       </div>
 
-      <div className="text-center mb-6">
-        <span style={{ fontSize: 64, display: 'block', marginBottom: 16, animation: 'celebrate 0.5s ease' }}>🏆</span>
-        <div className="font-pixel mb-2" style={{ fontSize: 14, color: '#fbbf24' }}>CHALLENGE CLEAR!</div>
-        <p style={{ fontSize: 14, color: '#888' }}>7日間やり切った、すごい。</p>
+      {/* Hero */}
+      <div style={{ background: hero.bg, border: `2.5px solid ${hero.border}`, borderRadius: 24, padding: '28px 20px', textAlign: 'center', marginBottom: 20, boxShadow: `0 6px 0 ${hero.shadow}`, animation: 'fadeUp 0.4s ease' }}>
+        <div style={{ fontSize: 72, animation: 'celebrate 0.6s ease, bounce 2s 0.6s ease-in-out infinite', display: 'inline-block', marginBottom: 12 }}>
+          {hero.emoji}
+        </div>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 26, color: hero.color, marginBottom: 8 }}>
+          7日チャレンジ終了！
+        </div>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 52, color: '#3c3c3c', lineHeight: 1, marginBottom: 10 }}>
+          {doneCount}<span style={{ fontSize: 24, color: '#afafaf' }}>/7</span>
+        </div>
+        <div style={{ fontSize: 15, color: '#555', fontWeight: 700, marginBottom: 14, whiteSpace: 'pre-line', lineHeight: 1.6 }}>
+          {hero.message}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: 6 }}>
+          {Array.from({ length: 7 }, (_, i) => (
+            <span key={i} style={{ fontSize: 22, opacity: i < doneCount ? 1 : 0.15 }}>⭐</span>
+          ))}
+        </div>
       </div>
 
-      <div style={{
-        background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)',
-        borderRadius: 16, padding: 20, textAlign: 'center', marginBottom: 20,
-      }}>
-        <span className="font-pixel" style={{ fontSize: 36, color: '#fbbf24' }}>{doneCount}</span>
-        <span className="font-pixel" style={{ fontSize: 20, color: '#666' }}> / 7</span>
-        <div style={{ fontSize: 12, color: '#888', marginTop: 8, fontWeight: 700 }}>達成日数</div>
-        <div style={{ fontSize: 13, color: '#aaa', marginTop: 8 }}>{reflection}</div>
+      {/* 7日ログ */}
+      <div style={{ animation: 'fadeUp 0.5s ease', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#3c3c3c', marginBottom: 10 }}>
+          7日ログ 📋
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {Array.from({ length: 7 }, (_, i) => {
+            const d = days.find(x => x.day_number === i + 1);
+            const bg = d?.status === 'done' ? '#f0fce4' : d?.status === 'not_done' ? '#fff0f0' : '#f5f5f5';
+            const border = d?.status === 'done' ? '#58cc02' : d?.status === 'not_done' ? '#ff4b4b' : '#d0d0d0';
+            const numBg = d?.status === 'done' ? '#58cc02' : d?.status === 'not_done' ? '#ff4b4b' : '#d0d0d0';
+            const shadow = d?.status === 'done' ? '0 3px 0 #c8f59a' : d?.status === 'not_done' ? '0 3px 0 #ffc0c0' : '0 3px 0 #e0e0e0';
+            const icon = d?.status === 'done' ? '✅' : d?.status === 'not_done' ? '❌' : '－';
+            return (
+              <div key={i} style={{ background: bg, border: `2px solid ${border}`, borderRadius: 14, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12, boxShadow: shadow, opacity: d ? 1 : 0.55 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, background: numBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Fredoka One, cursive', fontSize: 13, color: '#fff', flexShrink: 0 }}>
+                  {i + 1}
+                </div>
+                <div style={{ flex: 1, fontSize: 14, fontWeight: 800, color: d ? '#3c3c3c' : '#bbb', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {d?.plan ?? '未報告'}
+                </div>
+                <span style={{ fontSize: 18 }}>{icon}</span>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      <div className="font-pixel flex items-center gap-2 mb-3" style={{ fontSize: 9, color: '#a78bfa', letterSpacing: 1 }}>
-        7日ログ
-        <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(167,139,250,0.3), transparent)' }} />
-      </div>
-      <div className="flex flex-col gap-2 mb-5">
-        {days.map(d => (
-          <div key={d.day_number} style={{
-            background: d.status === 'done' ? 'rgba(52,211,153,0.04)' : 'rgba(251,113,133,0.02)',
-            border: `1px solid ${d.status === 'done' ? 'rgba(52,211,153,0.3)' : 'rgba(251,113,133,0.2)'}`,
-            borderRadius: 12, padding: '10px 14px',
-            display: 'flex', alignItems: 'center', gap: 10,
-          }}>
-            <span className="font-pixel" style={{ fontSize: 8, color: d.status === 'done' ? '#34d399' : '#fb7185', minWidth: 28 }}>
-              D{d.day_number}
-            </span>
-            <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: '#e8e8ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {d.plan}
-            </div>
-            <span style={{ fontSize: 16 }}>{d.status === 'done' ? '✅' : '❌'}</span>
-          </div>
-        ))}
+      {/* シェア */}
+      <div style={{ animation: 'fadeUp 0.6s ease', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#3c3c3c', marginBottom: 10 }}>
+          シェアしよう 📣
+        </div>
+        <div style={{ background: '#fff', border: '2px solid #e5e5e5', borderRadius: 16, padding: '16px', marginBottom: 10, fontSize: 14, color: '#777', lineHeight: 1.7, whiteSpace: 'pre-line', fontWeight: 700, boxShadow: '0 3px 0 #e0e0e0' }}>
+          {shareText}
+        </div>
+        <button onClick={handleCopy} style={{ width: '100%', padding: '14px', borderRadius: 14, border: copied ? '2px solid #58cc02' : 'none', background: copied ? '#f0fce4' : '#1cb0f6', color: copied ? '#58cc02' : '#fff', fontFamily: 'Fredoka One, cursive', fontSize: 16, cursor: 'pointer', boxShadow: copied ? '0 4px 0 #c8f59a' : '0 5px 0 #0a91d1', transition: 'all 0.15s' }}>
+          {copied ? '✅ コピーしました！' : '📋 テキストをコピー'}
+        </button>
       </div>
 
-      <div className="font-pixel flex items-center gap-2 mb-3" style={{ fontSize: 9, color: '#a78bfa', letterSpacing: 1 }}>
-        共有する
-        <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, rgba(167,139,250,0.3), transparent)' }} />
+      {/* BuddyShare誘導 - 常に表示 */}
+      <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: 20, padding: '24px 20px', textAlign: 'center', marginBottom: 12, boxShadow: '0 6px 0 #4a3580', animation: 'fadeUp 0.7s ease' }}>
+        <div style={{ fontSize: 32, marginBottom: 8 }}>🚀</div>
+        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#fff', marginBottom: 8 }}>
+          次のステージへ
+        </div>
+        <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', lineHeight: 1.7, marginBottom: 16, fontWeight: 700 }}>
+          本格的なBuddyShareで<br />
+          仲間と長期的に走り続けよう。
+        </div>
+        <a href="https://myapp-hides-projects-19f80db4.vercel.app/" target="_blank" rel="noopener noreferrer" style={{ display: 'block', padding: '14px 20px', borderRadius: 14, background: '#fff', color: '#764ba2', fontSize: 16, fontWeight: 800, textDecoration: 'none', boxShadow: '0 4px 0 rgba(0,0,0,0.2)', fontFamily: 'Fredoka One, cursive' }}>
+          BuddyShareを試す →
+        </a>
+        <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 10, fontWeight: 700 }}>
+          パスワード: catcat
+        </div>
       </div>
-      <div onClick={handleCopy} style={{
-        background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)',
-        borderRadius: 12, padding: '14px 16px', fontSize: 13, color: '#aaa',
-        lineHeight: 1.7, cursor: 'pointer', marginBottom: 12, position: 'relative',
-        whiteSpace: 'pre-line',
-      }}>
-        <span style={{ position: 'absolute', top: 8, right: 10, fontSize: 10, color: '#555', fontWeight: 700 }}>
-          {copied ? '✓ コピー済' : 'タップでコピー'}
-        </span>
-        {shareText}
-      </div>
-
-      <a href="https://myapp-hides-projects-19f80db4.vercel.app/" target="_blank" rel="noopener noreferrer" style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        padding: 14, borderRadius: 12, border: '1px solid rgba(52,211,153,0.3)',
-        background: 'rgba(52,211,153,0.05)', color: '#34d399', fontSize: 13,
-        fontWeight: 700, textDecoration: 'none', transition: 'all 0.15s', marginBottom: 8,
-      }}>
-        🚀 BuddyShare本編を試す（任意）
-      </a>
-      <p style={{ fontSize: 11, color: '#444', textAlign: 'center' }}>
-        7日回せた人だけ、バディモードも試せます
-      </p>
     </div>
   );
 }

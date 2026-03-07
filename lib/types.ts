@@ -20,3 +20,20 @@ export type MiniChallengeDay = {
   next_step: string | null;
   updated_at: string;
 };
+
+export type UserProfile = {
+  user_id: string;
+  nickname: string;
+  created_at: string;
+};
+
+export type OthersDayPost = {
+  id: string;
+  plan: string;
+  status: DayStatus;
+  day_number: number;
+  nickname: string;
+  theme: string | null;
+  check_count: number;
+  already_checked: boolean;
+};
