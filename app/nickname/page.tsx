@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createProfile } from '@/lib/api';
+import { createProfile, getProfile } from '@/lib/api';
 
 function NicknameForm() {
   const router = useRouter();
@@ -11,8 +11,22 @@ function NicknameForm() {
   const next = searchParams.get('next') ?? '/challenge/new';
 
   const [nickname, setNickname] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // 既にプロフィールがあればスキップ
+  useEffect(() => {
+    async function check() {
+      if (!userId) return;
+      const profile = await getProfile(userId);
+      if (profile) {
+        router.replace(next);
+        return;
+      }
+      setLoading(false);
+    }
+    check();
+  }, [userId, next, router]);
 
   async function handleSubmit() {
     if (!nickname.trim()) { setError('ニックネームを入力してください'); return; }
@@ -25,6 +39,19 @@ function NicknameForm() {
       setError('エラーが発生しました。もう一度試してください。');
       setLoading(false);
     }
+  }
+
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 32, color: '#58cc02', textShadow: '0 4px 0 #46a302', marginBottom: 12 }}>
+            mini<span style={{ color: '#1cb0f6' }}>buddy</span>
+          </div>
+          <div style={{ color: '#afafaf', fontSize: 14, fontWeight: 700 }}>Loading...</div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -53,15 +80,8 @@ function NicknameForm() {
         </p>
       </div>
 
-      <div style={{
-        background: '#fff', borderRadius: 20, padding: 24,
-        boxShadow: '0 4px 0 #d0d0d0',
-        animation: 'fadeUp 0.6s ease',
-      }}>
-        <label style={{
-          fontFamily: 'Fredoka One, cursive', fontSize: 15,
-          color: '#3c3c3c', display: 'block', marginBottom: 10,
-        }}>
+      <div style={{ background: '#fff', borderRadius: 20, padding: 24, boxShadow: '0 4px 0 #d0d0d0', animation: 'fadeUp 0.6s ease' }}>
+        <label style={{ fontFamily: 'Fredoka One, cursive', fontSize: 15, color: '#3c3c3c', display: 'block', marginBottom: 10 }}>
           ニックネーム
         </label>
         <input
@@ -87,20 +107,20 @@ function NicknameForm() {
 
         <button
           onClick={handleSubmit}
-          disabled={loading || !nickname.trim()}
+          disabled={!nickname.trim()}
           className="submit-btn"
           style={{
             width: '100%', padding: '16px',
             borderRadius: 14, border: 'none',
-            background: loading || !nickname.trim() ? '#e5e5e5' : '#1cb0f6',
-            color: loading || !nickname.trim() ? '#afafaf' : '#fff',
+            background: !nickname.trim() ? '#e5e5e5' : '#1cb0f6',
+            color: !nickname.trim() ? '#afafaf' : '#fff',
             fontFamily: 'Fredoka One, cursive', fontSize: 18,
-            cursor: loading || !nickname.trim() ? 'not-allowed' : 'pointer',
-            boxShadow: loading || !nickname.trim() ? 'none' : '0 6px 0 #0a91d1',
+            cursor: !nickname.trim() ? 'not-allowed' : 'pointer',
+            boxShadow: !nickname.trim() ? 'none' : '0 6px 0 #0a91d1',
             transition: 'all 0.15s',
           }}
         >
-          {loading ? '保存中...' : '決定！✨'}
+          決定！✨
         </button>
       </div>
     </div>

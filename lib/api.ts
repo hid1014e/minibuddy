@@ -22,7 +22,7 @@ export async function getProfile(userId: string): Promise<UserProfile | null> {
 export async function createProfile(userId: string, nickname: string): Promise<void> {
   const { error } = await supabase
     .from('user_profiles')
-    .insert({ user_id: userId, nickname });
+    .upsert({ user_id: userId, nickname }, { onConflict: 'user_id' });
   if (error) throw error;
 }
 
