@@ -59,7 +59,7 @@ export default function ChallengePage() {
       .eq('id', challengeId)
       .maybeSingle();
 
-    console.log('challenge:', challenge, 'error:', challengeError);
+    console.log('challenge status:', challenge?.status, 'id:', challengeId, 'full:', JSON.stringify(challenge));
 
     // 完了済みなら完了画面へ
     if (challenge?.status === 'completed') {
@@ -510,7 +510,8 @@ export default function ChallengePage() {
         onClick={handleClap}
         className="clap-btn"
         style={{
-          width: '100%', padding: '16px', borderRadius: 16, border: 'none',
+          width: '100%', padding: '16px', borderRadius: 16,
+          border: clapped ? '2.5px solid #ff9600' : 'none',
           background: clapped ? '#fff3d7' : '#ff9600',
           color: clapped ? '#ff9600' : '#fff',
           fontFamily: 'Fredoka One, cursive', fontSize: 17,
@@ -518,7 +519,6 @@ export default function ChallengePage() {
           boxShadow: clapped ? '0 4px 0 #ffe0a0' : '0 6px 0 #cc7a00',
           transition: 'all 0.15s',
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          border: clapped ? '2.5px solid #ff9600' : 'none',
         }}
       >
         <span style={{ fontSize: 22 }}>👏</span>
