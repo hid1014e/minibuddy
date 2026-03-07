@@ -3,10 +3,19 @@ import { MiniChallenge, MiniChallengeDay, UserProfile, OthersDayPost } from './t
 
 // ─── 認証 ────────────────────────────────────────────
 export async function ensureAuth() {
+  // refreshSession で確実にトークンを更新
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) await supabase.auth.signInAnonymously();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
+  
+  if (session) {
+    // セッションあり → リフレッシュして最新トークンを取得
+    const { data: refreshed } = await supabase.auth.refreshSession();
+    if (refreshed.session) return refreshed.session.user;
+  }
+
+  // セッションなし → 新規匿名ログイン
+  const { data, error } = await supabase.auth.signInAnonymously();
+  if (error) return null;
+  return data.user;
 }
 
 // ─── プロフィール ─────────────────────────────────────
