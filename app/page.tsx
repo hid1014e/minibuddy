@@ -10,23 +10,10 @@ export default function Home() {
 
   useEffect(() => {
     async function init() {
-      // localStorageが使えるか確認（シークレットモードでは使えない場合がある）
-      let isSecret = false;
-      try {
-        localStorage.setItem('__test__', '1');
-        localStorage.removeItem('__test__');
-      } catch {
-        isSecret = true;
-      }
-
       const { data: { session } } = await supabase.auth.getSession();
 
-      // セッションなし または シークレットモード → 新規匿名ログイン
-      if (!session || isSecret) {
-        // シークレットの場合は既存セッションをサインアウトして新規作成
-        if (session && isSecret) {
-          await supabase.auth.signOut();
-        }
+      if (!session) {
+        // セッションなし → 新規匿名ログイン
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error || !data.user) return;
         router.replace(
@@ -35,7 +22,7 @@ export default function Home() {
         return;
       }
 
-      // 通常モード・セッションあり
+      // セッションあり → プロフィール確認
       const profile = await getProfile(session.user.id);
       if (!profile) {
         const challenge = await getActiveChallenge();
