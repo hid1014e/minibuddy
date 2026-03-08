@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   getDays, saveDay, completeChallenge,
-  getTodayDoneCount, getTodayClapCount, sendClap,
+  getTodayDoneCount, getTodayClapCount, sendClap, hasClappedToday,
   ensureAuth, getOthersPosts, checkPost, getMyCheerCount,
 } from '@/lib/api';
 import { MiniChallengeDay, OthersDayPost } from '@/lib/types';
@@ -75,6 +75,8 @@ export default function ChallengePage() {
       setOthersPosts(others);
       const cheers = await getMyCheerCount(challengeId, dayNum);
       setCheerCount(cheers);
+      const alreadyClapped = await hasClappedToday(user.id);
+      setClapped(alreadyClapped);
     }
   }, [challengeId, router]);
 

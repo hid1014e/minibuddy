@@ -119,12 +119,25 @@ export async function getTodayClapCount(): Promise<number> {
 }
 
 // ─── 拍手 ─────────────────────────────────────────────
+export async function hasClappedToday(userId: string): Promise<boolean> {
+  const today = new Date().toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from('daily_user_reactions')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('date', today)
+    .eq('reaction_type', 'clap')
+    .maybeSingle();
+  return !!data;
+}
+
 export async function sendClap(userId: string): Promise<'ok' | 'already_clapped'> {
   const today = new Date().toISOString().slice(0, 10);
   const { error } = await supabase
     .from('daily_user_reactions')
     .insert({ user_id: userId, date: today, reaction_type: 'clap' });
   if (error?.code === '23505') return 'already_clapped';
+  if (error) return 'already_clapped';
   return 'ok';
 }
 
