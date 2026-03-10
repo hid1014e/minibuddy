@@ -30,12 +30,12 @@ export async function createProfile(userId: string, nickname: string): Promise<v
 }
 
 // ─── チャレンジ ───────────────────────────────────────
-export async function startChallenge(theme?: string): Promise<MiniChallenge> {
+export async function startChallenge(theme?: string, goal?: string): Promise<MiniChallenge> {
   const user = await ensureAuth();
   if (!user) throw new Error('auth failed');
   const { data, error } = await supabase
     .from('mini_challenges')
-    .insert({ theme: theme ?? null, owner_user_id: user.id })
+    .insert({ theme: theme ?? null, goal: goal ?? null, owner_user_id: user.id })
     .select()
     .single();
   if (error) throw error;

@@ -31,6 +31,8 @@ export default function ChallengePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [othersPosts, setOthersPosts] = useState<OthersDayPost[]>([]);
   const [cheerCount, setCheerCount] = useState(0);
+  const [goal, setGoal] = useState<string | null>(null);
+  const [theme, setChallengeTheme] = useState<string | null>(null);
 
   // フォーム
   const [plan, setPlan] = useState('');
@@ -66,6 +68,9 @@ export default function ChallengePage() {
       router.replace(`/challenge/${challengeId}/complete`);
       return;
     }
+
+    if (challenge?.goal) setGoal(challenge.goal);
+    if (challenge?.theme) setChallengeTheme(challenge.theme);
 
     const dayNum = challenge ? calcTodayDay(challenge.started_at) : 1;
     setTodayDayNum(dayNum);
@@ -168,6 +173,30 @@ export default function ChallengePage() {
           🔥 {doneCount}人達成
         </div>
       </div>
+
+      {/* 目標カード */}
+      {goal && (
+        <div style={{
+          background: '#fff', borderRadius: 16, padding: '14px 16px',
+          marginBottom: 16, boxShadow: '0 4px 0 #d0d0d0',
+          border: '2.5px solid #e5e5e5',
+          animation: 'fadeUp 0.35s ease',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {theme && (
+              <span style={{
+                background: '#f0fce4', color: '#58cc02', fontSize: 11,
+                fontFamily: 'Fredoka One, cursive', padding: '3px 10px',
+                borderRadius: 100, border: '2px solid #58cc02', flexShrink: 0,
+              }}>{theme}</span>
+            )}
+            <span style={{ fontSize: 13, color: '#afafaf', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}>目標</span>
+          </div>
+          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#3c3c3c', marginTop: 6, lineHeight: 1.4 }}>
+            {goal}
+          </div>
+        </div>
+      )}
 
       {/* 応援バナー */}
       {cheerCount > 0 && (

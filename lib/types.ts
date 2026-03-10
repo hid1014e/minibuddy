@@ -6,6 +6,7 @@ export type MiniChallenge = {
   id: string;
   owner_user_id: string;
   theme: string | null;
+  goal: string | null;
   started_at: string;
   completed_at: string | null;
   status: ChallengeStatus;
