@@ -107,6 +107,17 @@ export async function completeChallenge(challengeId: string) {
     .eq('id', challengeId);
 }
 
+export async function resetAndStartNew(): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  // 既存チャレンジを全部completedに（念のため）
+  await supabase
+    .from('mini_challenges')
+    .update({ status: 'completed' })
+    .eq('owner_user_id', user.id)
+    .eq('status', 'active');
+}
+
 // ─── 集計 ─────────────────────────────────────────────
 export async function getTodayDoneCount(): Promise<number> {
   const { data } = await supabase.rpc('get_today_done_count');

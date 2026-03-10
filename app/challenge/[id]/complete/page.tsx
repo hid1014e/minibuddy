@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
-import { getDays } from '@/lib/api';
+import { useParams, useRouter } from 'next/navigation';
+import { getDays, resetAndStartNew } from '@/lib/api';
 import { MiniChallengeDay } from '@/lib/types';
 
 export default function CompletePage() {
   const params = useParams();
+  const router = useRouter();
   const challengeId = params.id as string;
   const [days, setDays] = useState<MiniChallengeDay[]>([]);
   const [copied, setCopied] = useState(false);
@@ -21,12 +22,18 @@ export default function CompletePage() {
   const doneCount = days.filter(d => d.status === 'done').length;
 
   const hero = doneCount === 7
-    ? { emoji: '🏆', color: '#ff9600', bg: 'linear-gradient(135deg, #fff9e6, #fff3d7)', border: '#ffc800', shadow: '#e0b000', message: '完璧！全7日達成！\nあなたは本物です 🎉' }
+    ? { emoji: '🏆', color: '#ff9600', bg: 'linear-gradient(135deg, #fff9e6, #fff3d7)', border: '#ffc800', shadow: '#e0b000', message: '完璧！全7日達成！' }
     : doneCount >= 5
     ? { emoji: '🌟', color: '#1cb0f6', bg: 'linear-gradient(135deg, #e8f8ff, #ddf4ff)', border: '#1cb0f6', shadow: '#0a91d1', message: `${doneCount}/7日達成！\n素晴らしい継続力です 👏` }
     : doneCount >= 3
     ? { emoji: '💪', color: '#58cc02', bg: 'linear-gradient(135deg, #f0fce4, #e0f8c8)', border: '#58cc02', shadow: '#46a302', message: `${doneCount}/7日達成。\n次はもっとやれる！` }
     : { emoji: '🌱', color: '#ce82ff', bg: 'linear-gradient(135deg, #f8f0ff, #f1d9ff)', border: '#ce82ff', shadow: '#9c44c0', message: `${doneCount}/7日。\nまず始めたことが大事！` };
+
+  const retryLabel = doneCount === 7
+    ? '🔄 次のチャレンジへ'
+    : doneCount >= 5
+    ? '🔄 もう一度挑戦する'
+    : '🔄 もう一度チャレンジする';
 
   const shareText = `#minibuddy 7日チャレンジ完了！\n${doneCount}/7 達成 🔥`;
 
@@ -34,6 +41,11 @@ export default function CompletePage() {
     await navigator.clipboard.writeText(shareText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  }
+
+  async function handleRetry() {
+    await resetAndStartNew();
+    router.replace('/challenge/new');
   }
 
   return (
@@ -113,8 +125,15 @@ export default function CompletePage() {
         </button>
       </div>
 
-      {/* BuddyShare誘導 - 常に表示 */}
-      <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: 20, padding: '24px 20px', textAlign: 'center', marginBottom: 12, boxShadow: '0 6px 0 #4a3580', animation: 'fadeUp 0.7s ease' }}>
+      {/* もう一度ボタン */}
+      <div style={{ animation: 'fadeUp 0.65s ease', marginBottom: 12 }}>
+        <button onClick={handleRetry} style={{ width: '100%', padding: '16px', borderRadius: 14, border: '2.5px solid #e5e5e5', background: '#fff', color: '#3c3c3c', fontFamily: 'Fredoka One, cursive', fontSize: 16, cursor: 'pointer', boxShadow: '0 5px 0 #d0d0d0', transition: 'all 0.15s' }}>
+          {retryLabel}
+        </button>
+      </div>
+
+      {/* BuddyShare誘導 */}
+      <div style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)', borderRadius: 20, padding: '24px 20px', textAlign: 'center', marginBottom: 32, boxShadow: '0 6px 0 #4a3580', animation: 'fadeUp 0.7s ease' }}>
         <div style={{ fontSize: 32, marginBottom: 8 }}>🚀</div>
         <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#fff', marginBottom: 8 }}>
           次のステージへ
