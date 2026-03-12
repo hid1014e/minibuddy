@@ -11,29 +11,20 @@ export default function Home() {
   useEffect(() => {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser();
-      console.log('1. user:', user?.id ?? 'null');
-
       if (!user) {
         const { data, error } = await supabase.auth.signInAnonymously();
-        console.log('2. new anon:', data.user?.id, error?.message);
-        if (!data.user) return;
+        if (error || !data.user) return;
         router.replace(`/nickname?uid=${data.user.id}&next=${encodeURIComponent('/challenge/new')}`);
         return;
       }
-
       const profile = await getProfile(user.id);
-      console.log('3. profile:', profile?.nickname ?? 'null');
-
       if (!profile) {
         const challenge = await getActiveChallenge();
-        console.log('4. challenge(no profile):', challenge?.id ?? 'null');
         const next = challenge ? `/challenge/${challenge.id}` : '/challenge/new';
         router.replace(`/nickname?uid=${user.id}&next=${encodeURIComponent(next)}`);
         return;
       }
-
       const challenge = await getActiveChallenge();
-      console.log('5. challenge:', challenge?.id ?? 'null');
       router.replace(challenge ? `/challenge/${challenge.id}` : '/challenge/new');
     }
     init();
@@ -42,10 +33,8 @@ export default function Home() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 32, color: '#9b59ff', textShadow: '0 0 20px rgba(155,89,255,0.8)', marginBottom: 12 }}>
-          Hagrit
-        </div>
-        <div style={{ color: '#9988bb', fontSize: 14, fontWeight: 700 }}>召喚中...</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)', marginBottom: 12 }}>Hagrit</div>
+        <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 700 }}>読み込み中...</div>
       </div>
     </div>
   );

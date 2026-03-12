@@ -7,24 +7,22 @@
 :root {
   --font-display: 'Cinzel', serif;
   --font-body: 'Nunito', sans-serif;
-  --bg: #1a0a2e;
-  --card: #2d1b4e;
-  --card-light: #3d2560;
+  --bg: #0f1729;
+  --card: #1e2d4a;
+  --card-light: #263556;
   --white: #ffffff;
-  --purple: #9b59ff;
-  --purple-dark: #6a1fc2;
-  --purple-light: #c39bff;
-  --gold: #ffd700;
-  --gold-dark: #cc9900;
-  --gold-light: #fff3b0;
-  --teal: #00d4aa;
-  --teal-dark: #00a882;
-  --red: #ff4b6e;
-  --red-light: #ff8fa3;
-  --gray: #8888aa;
-  --gray-light: #4a3a6a;
-  --text: #f0e6ff;
-  --text-muted: #9988bb;
+  --gold: #f0c040;
+  --gold-dark: #c49a20;
+  --gold-light: #fef3c7;
+  --emerald: #34d399;
+  --emerald-dark: #059669;
+  --purple: #a78bfa;
+  --purple-dark: #7c3aed;
+  --red: #f87171;
+  --gray: #94a3b8;
+  --gray-light: #2d3f5a;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
 }
 
 * { box-sizing: border-box; }
@@ -37,7 +35,8 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   background-image: 
-    radial-gradient(ellipse at 20% 50%, rgba(155, 89, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(0, 212, 170, 0.06) 0%, transparent 50%);
+    radial-gradient(ellipse at 30% 20%, rgba(240,192,64,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(52,211,153,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(167,139,250,0.04) 0%, transparent 60%);
   min-height: 100vh;
 }
