@@ -250,3 +250,21 @@ export async function getMyCheerCount(
     .eq('target_day_id', dayData.id);
   return count ?? 0;
 }
+
+// ─── 連続週数・称号 ────────────────────────────────────
+export async function getStreakWeeks(): Promise<number> {
+  const user = await ensureAuth();
+  if (!user) return 0;
+  const { data } = await supabase.rpc('get_streak_weeks', { p_user_id: user.id });
+  return data ?? 0;
+}
+
+export function getTitle(weeks: number): { title: string; emoji: string } {
+  if (weeks >= 8) return { title: '習慣化マジシャン', emoji: '🪄' };
+  if (weeks >= 6) return { title: 'OBLの使い手', emoji: '📖' };
+  if (weeks >= 4) return { title: '中級魔法使い', emoji: '🧙' };
+  if (weeks >= 3) return { title: '呪文の使い手', emoji: '⚗️' };
+  if (weeks >= 2) return { title: '魔法使いの卵', emoji: '🔮' };
+  if (weeks >= 1) return { title: '見習い魔法使い', emoji: '🌱' };
+  return { title: '新入生', emoji: '✨' };
+}

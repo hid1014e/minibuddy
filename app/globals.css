@@ -1,33 +1,30 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Nunito:wght@400;600;700;800;900&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --font-display: 'Fredoka One', cursive;
+  --font-display: 'Cinzel', serif;
   --font-body: 'Nunito', sans-serif;
-  --bg: #f0f4ff;
+  --bg: #1a0a2e;
+  --card: #2d1b4e;
+  --card-light: #3d2560;
   --white: #ffffff;
-  --green: #58cc02;
-  --green-dark: #46a302;
-  --green-light: #d7f5b1;
-  --blue: #1cb0f6;
-  --blue-dark: #0a91d1;
-  --blue-light: #ddf4ff;
-  --orange: #ff9600;
-  --orange-light: #fff3d7;
-  --red: #ff4b4b;
-  --red-light: #ffdfe0;
-  --purple: #ce82ff;
-  --purple-dark: #9c44c0;
-  --purple-light: #f1d9ff;
-  --yellow: #ffc800;
-  --yellow-light: #fff8d7;
-  --gray: #afafaf;
-  --gray-light: #e5e5e5;
-  --text: #3c3c3c;
-  --text-light: #777777;
+  --purple: #9b59ff;
+  --purple-dark: #6a1fc2;
+  --purple-light: #c39bff;
+  --gold: #ffd700;
+  --gold-dark: #cc9900;
+  --gold-light: #fff3b0;
+  --teal: #00d4aa;
+  --teal-dark: #00a882;
+  --red: #ff4b6e;
+  --red-light: #ff8fa3;
+  --gray: #8888aa;
+  --gray-light: #4a3a6a;
+  --text: #f0e6ff;
+  --text-muted: #9988bb;
 }
 
 * { box-sizing: border-box; }
@@ -39,6 +36,8 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  background-image: 
+    radial-gradient(ellipse at 20% 50%, rgba(155, 89, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(0, 212, 170, 0.06) 0%, transparent 50%);
+  min-height: 100vh;
 }
-
-.font-display { font-family: var(--font-display); }
