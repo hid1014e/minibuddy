@@ -178,9 +178,17 @@ export async function getOthersPosts(
   }
   if (!allDays || allDays.length === 0) return [];
 
-  // 自分以外
+  // ブロック済みユーザーIDを取得
+  const { data: blocks } = await supabase
+    .from('user_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', myUserId);
+  const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
+
+  // 自分以外・ブロック除外
   const others = (allDays as any[]).filter(
-    d => d.mini_challenges.owner_user_id !== myUserId
+    d => d.mini_challenges.owner_user_id !== myUserId &&
+         !blockedIds.has(d.mini_challenges.owner_user_id)
   );
   if (others.length === 0) return [];
 
@@ -357,4 +365,62 @@ export async function getUserChallengeHistory(userId: string) {
 export async function getUserStreakWeeks(userId: string): Promise<number> {
   const { data } = await supabase.rpc('get_streak_weeks', { p_user_id: userId });
   return data ?? 0;
+}
+
+// ─── ブロック ──────────────────────────────────────────
+export async function blockUser(blockedId: string): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  await supabase.from('user_blocks').insert({ blocker_id: user.id, blocked_id: blockedId });
+}
+
+export async function unblockUser(blockedId: string): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  await supabase.from('user_blocks').delete()
+    .eq('blocker_id', user.id).eq('blocked_id', blockedId);
+}
+
+export async function isBlocked(blockedId: string): Promise<boolean> {
+  const user = await ensureAuth();
+  if (!user) return false;
+  const { data } = await supabase.from('user_blocks')
+    .select('id').eq('blocker_id', user.id).eq('blocked_id', blockedId).maybeSingle();
+  return !!data;
+}
+
+export async function getBlockedIds(): Promise<string[]> {
+  const user = await ensureAuth();
+  if (!user) return [];
+  const { data } = await supabase.from('user_blocks')
+    .select('blocked_id').eq('blocker_id', user.id);
+  return (data ?? []).map((r: any) => r.blocked_id);
+}
+
+// ─── アカウント削除 ────────────────────────────────────
+export async function deleteMyAccount(): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  // データを全部削除（CASCADE前提）
+  await supabase.from('post_comments').delete().eq('user_id', user.id);
+  await supabase.from('day_checks').delete().eq('checker_id', user.id);
+  await supabase.from('daily_user_reactions').delete().eq('user_id', user.id);
+  await supabase.from('user_blocks').delete().eq('blocker_id', user.id);
+  const { data: challenges } = await supabase.from('mini_challenges')
+    .select('id').eq('owner_user_id', user.id);
+  if (challenges?.length) {
+    const ids = challenges.map((c: any) => c.id);
+    await supabase.from('mini_challenge_days').delete().in('mini_challenge_id', ids);
+    await supabase.from('mini_challenges').delete().eq('owner_user_id', user.id);
+  }
+  await supabase.from('user_profiles').delete().eq('user_id', user.id);
+  await supabase.auth.signOut();
+}
+
+// 自分のニックネーム取得
+export async function getMyNickname(): Promise<string | null> {
+  const user = await ensureAuth();
+  if (!user) return null;
+  const profile = await getProfile(user.id);
+  return profile?.nickname ?? null;
 }
