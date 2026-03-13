@@ -268,3 +268,21 @@ export function getTitle(weeks: number): { title: string; emoji: string } {
   if (weeks >= 1) return { title: '見習い魔法使い', emoji: '🌱' };
   return { title: '新入生', emoji: '✨' };
 }
+
+// ─── コメント ─────────────────────────────────────────
+export async function getComments(dayId: string) {
+  const { data } = await supabase
+    .from('post_comments')
+    .select('id, nickname, body, created_at')
+    .eq('day_id', dayId)
+    .order('created_at', { ascending: true });
+  return data ?? [];
+}
+
+export async function addComment(dayId: string, body: string): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  const profile = await getProfile(user.id);
+  const nickname = profile?.nickname ?? '匿名';
+  await supabase.from('post_comments').insert({ day_id: dayId, user_id: user.id, nickname, body });
+}

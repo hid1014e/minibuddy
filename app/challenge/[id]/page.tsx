@@ -6,7 +6,7 @@ import {
   getDays, saveDay, completeChallenge,
   getTodayDoneCount, getTodayClapCount, sendClap, hasClappedToday,
   ensureAuth, getOthersPosts, checkPost, getMyCheerCount,
-  getStreakWeeks, getTitle,
+  getStreakWeeks, getTitle, getComments, addComment,
 } from '@/lib/api';
 import { MiniChallengeDay, OthersDayPost } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
@@ -36,6 +36,9 @@ export default function ChallengePage() {
   const [goal, setGoal] = useState<string | null>(null);
   const [theme, setChallengeTheme] = useState<string | null>(null);
   const [streakWeeks, setStreakWeeks] = useState(0);
+  const [comments, setComments] = useState<Record<string, {id:string;nickname:string;body:string;created_at:string}[]>>({});
+  const [openCommentId, setOpenCommentId] = useState<string | null>(null);
+  const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
 
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState<'done' | 'not_done' | null>(null);
@@ -115,6 +118,27 @@ export default function ChallengePage() {
     updated[idx] = { ...updated[idx], already_checked: true, check_count: updated[idx].check_count + 1 };
     setOthersPosts(updated);
     await checkPost(postId, userId);
+  }
+
+  async function toggleComments(dayId: string) {
+    if (openCommentId === dayId) {
+      setOpenCommentId(null);
+      return;
+    }
+    setOpenCommentId(dayId);
+    if (!comments[dayId]) {
+      const data = await getComments(dayId);
+      setComments(prev => ({ ...prev, [dayId]: data }));
+    }
+  }
+
+  async function handleAddComment(dayId: string) {
+    const body = commentInputs[dayId]?.trim();
+    if (!body) return;
+    await addComment(dayId, body);
+    setCommentInputs(prev => ({ ...prev, [dayId]: '' }));
+    const data = await getComments(dayId);
+    setComments(prev => ({ ...prev, [dayId]: data }));
   }
 
   const titleData = getTitle(streakWeeks);
@@ -286,11 +310,42 @@ export default function ChallengePage() {
                   <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 'auto', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {post.day_number}</span>
                 </div>
                 <div style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 700, marginBottom: 8, fontFamily: 'Nunito, sans-serif' }}>{post.plan}</div>
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button onClick={() => toggleComments(post.id)} style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
+                    💬 {comments[post.id]?.length ?? ''} コメント
+                  </button>
                   <button onClick={() => !post.already_checked && handleCheck(post.id, idx)} style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer', transition: 'all 0.15s' }}>
                     {post.already_checked ? `✦ 応援した (${post.check_count})` : `✧ 応援する (${post.check_count})`}
                   </button>
                 </div>
+
+                {/* コメント欄 */}
+                {openCommentId === post.id && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10 }}>
+                    {(comments[post.id] ?? []).map(c => (
+                      <div key={c.id} style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
+                        <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
+                      </div>
+                    ))}
+                    {(comments[post.id] ?? []).length === 0 && (
+                      <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', marginBottom: 8 }}>まだコメントはありません</div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                      <input
+                        value={commentInputs[post.id] ?? ''}
+                        onChange={e => setCommentInputs(prev => ({ ...prev, [post.id]: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && handleAddComment(post.id)}
+                        placeholder="コメントする（50文字以内）"
+                        maxLength={50}
+                        style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, outline: 'none' }}
+                      />
+                      <button onClick={() => handleAddComment(post.id)} style={{ padding: '8px 14px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#f0c040,#c49a20)', color: '#0f1729', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
+                        送信
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
