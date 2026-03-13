@@ -206,6 +206,7 @@ export async function getOthersPosts(
     const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
     return {
       id: d.id,
+      owner_user_id: d.mini_challenges.owner_user_id,
       plan: d.plan.slice(0, 20),
       status: d.status,
       day_number: d.day_number,
@@ -315,4 +316,45 @@ export async function addReply(dayId: string, body: string, replyTo: string): Pr
   const profile = await getProfile(user.id);
   const nickname = profile?.nickname ?? '匿名';
   await supabase.from('post_comments').insert({ day_id: dayId, user_id: user.id, nickname, body, reply_to: replyTo });
+}
+
+// ─── ユーザープロフィール ──────────────────────────────
+export async function getUserProfile(userId: string) {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('nickname')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data;
+}
+
+export async function getUserChallengeHistory(userId: string) {
+  const { data } = await supabase
+    .from('mini_challenges')
+    .select(`
+      id, theme, goal, status, started_at, completed_at,
+      mini_challenge_days ( status )
+    `)
+    .eq('owner_user_id', userId)
+    .order('started_at', { ascending: false })
+    .limit(20);
+  return (data ?? []).map((c: any) => {
+    const days = c.mini_challenge_days ?? [];
+    const done = days.filter((d: any) => d.status === 'done').length;
+    const total = days.length;
+    return {
+      id: c.id,
+      theme: c.theme,
+      goal: c.goal,
+      status: c.status,
+      started_at: c.started_at,
+      done,
+      total,
+    };
+  });
+}
+
+export async function getUserStreakWeeks(userId: string): Promise<number> {
+  const { data } = await supabase.rpc('get_streak_weeks', { p_user_id: userId });
+  return data ?? 0;
 }
