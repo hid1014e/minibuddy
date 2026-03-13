@@ -286,3 +286,33 @@ export async function addComment(dayId: string, body: string): Promise<void> {
   const nickname = profile?.nickname ?? '匿名';
   await supabase.from('post_comments').insert({ day_id: dayId, user_id: user.id, nickname, body });
 }
+
+// ─── 自分の今日の投稿へのコメントを取得 ──────────────────
+export async function getCommentsOnMyPost(
+  challengeId: string,
+  dayNumber: number
+): Promise<{id:string;nickname:string;body:string;created_at:string;reply_to:string|null}[]> {
+  const { data: dayData } = await supabase
+    .from('mini_challenge_days')
+    .select('id')
+    .eq('mini_challenge_id', challengeId)
+    .eq('day_number', dayNumber)
+    .maybeSingle();
+  if (!dayData) return [];
+
+  const { data } = await supabase
+    .from('post_comments')
+    .select('id, nickname, body, created_at, reply_to')
+    .eq('day_id', dayData.id)
+    .order('created_at', { ascending: true });
+  return data ?? [];
+}
+
+// コメントに返信
+export async function addReply(dayId: string, body: string, replyTo: string): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  const profile = await getProfile(user.id);
+  const nickname = profile?.nickname ?? '匿名';
+  await supabase.from('post_comments').insert({ day_id: dayId, user_id: user.id, nickname, body, reply_to: replyTo });
+}
