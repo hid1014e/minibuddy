@@ -24,11 +24,12 @@ const THEMES: Record<string, { icon: string; color: string }> = {
   'その他': { icon: '🧪', color: '#94a3b8' },
 };
 
-// ── コメントスレッド ───────────────────────────────────
-function CommentThread({ comments, dayId, onAdd }: {
+// ── コメントスレッド（仲間の気配のみで使用） ───────────────────────────────────
+function CommentThread({ comments, dayId, onAdd, myNickname }: {
   comments: Comment[];
   dayId: string;
   onAdd: (body: string, replyTo?: string) => Promise<void>;
+  myNickname: string;
 }) {
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; nickname: string } | null>(null);
@@ -72,17 +73,19 @@ function CommentThread({ comments, dayId, onAdd }: {
                 {c.body}
               </span>
             </div>
-            {/* 返信ボタン：自分のコメントには不要だが全員に表示 */}
-            <button
-              onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
-              style={{
-                fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0, padding: '0 4px',
-              }}
-            >
-              {replyTo?.id === c.id ? '✕' : '返信'}
-            </button>
+            {/* 返信ボタン：相手のコメントにのみ表示（自分のコメントには出さない） */}
+            {c.nickname !== myNickname && (
+              <button
+                onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
+                style={{
+                  fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8',
+                  background: 'transparent', border: 'none', cursor: 'pointer',
+                  fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0, padding: '0 4px',
+                }}
+              >
+                {replyTo?.id === c.id ? '✕' : '返信'}
+              </button>
+            )}
           </div>
 
           {/* 返信一覧 */}
@@ -296,10 +299,10 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 応援バナー */}
+      {/* 応援バナー（応援された方に表示） */}
       {cheerCount > 0 && (
         <div style={{ background: 'rgba(240,192,64,0.07)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, textAlign: 'center' }}>
-          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人があなたを応援しています！</span>
+          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人に応援されました</span>
         </div>
       )}
 
@@ -409,7 +412,7 @@ export default function ChallengePage() {
         </div>
       </div>
 
-      {/* 仲間の気配 */}
+      {/* 仲間の気配（自分以外の投稿のみ） */}
       {othersPosts.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>仲間の気配 🌙</div>
@@ -450,6 +453,7 @@ export default function ChallengePage() {
                     comments={comments[post.id] ?? []}
                     dayId={post.id}
                     onAdd={(body, replyTo) => handleAddComment(post.id, body, replyTo)}
+                    myNickname={myNickname}
                   />
                 )}
               </div>
