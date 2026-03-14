@@ -192,8 +192,20 @@ export async function getOthersPosts(
   );
   if (others.length === 0) return [];
 
-  // ランダム3件
-  const shuffled = [...others].sort(() => Math.random() - 0.5).slice(0, 3);
+  // 自分がコメントした投稿のIDを取得
+  const { data: myComments } = await supabase
+    .from('post_comments')
+    .select('day_id')
+    .eq('user_id', myUserId);
+  const commentedDayIds = new Set((myComments ?? []).map((r: any) => r.day_id));
+
+  // コメント済み投稿を優先、残りをランダムで補完（最大5件）
+  const commented = others.filter(d => commentedDayIds.has(d.id));
+  const notCommented = others.filter(d => !commentedDayIds.has(d.id))
+    .sort(() => Math.random() - 0.5)
+    .slice(0, Math.max(0, 3 - commented.length));
+  const shuffled = [...commented, ...notCommented];
+
   const dayIds = shuffled.map(d => d.id);
   const ownerIds = shuffled.map(d => d.mini_challenges.owner_user_id);
 
@@ -443,4 +455,13 @@ export async function getBlockList(): Promise<{ userId: string; nickname: string
     userId: id,
     nickname: (profiles ?? []).find((p: any) => p.user_id === id)?.nickname ?? '匿名',
   }));
+}
+
+// ─── 自分がコメントした投稿を取得 ────────────────────────
+export async function getMyCommentedPosts(myUserId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('post_comments')
+    .select('day_id')
+    .eq('user_id', myUserId);
+  return [...new Set((data ?? []).map((r: any) => r.day_id))];
 }
