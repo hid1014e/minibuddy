@@ -226,6 +226,10 @@ export async function getOthersPosts(
     commenterUserIds = new Set((commentsOnMe ?? []).map((r: any) => r.user_id));
   }
 
+  console.log('others:', others.length, others.map((d:any) => d.id));
+  console.log('commentedDayIds:', [...commentedDayIds]);
+  console.log('commenterUserIds:', [...commenterUserIds]);
+
   // コメント済み投稿 ＋ 自分にコメントしてきた人の投稿を必ず含む
   const priority = others.filter(d =>
     commentedDayIds.has(d.id) ||
