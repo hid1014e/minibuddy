@@ -189,6 +189,9 @@ export async function getOthersPosts(
   if (error) { console.error('getOthersPosts error:', error); return []; }
   if (!allDays || allDays.length === 0) return [];
 
+  console.log('allDays:', allDays.length, allDays.map((d:any) => ({id: d.id, owner: d.mini_challenges.owner_user_id})));
+  console.log('myUserId:', myUserId);
+
   // ブロック済みユーザーIDを取得
   const { data: blocks } = await supabase
     .from('user_blocks')

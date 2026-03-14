@@ -4,19 +4,121 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   getDays, saveDay, completeChallenge,
-  getTodayDoneCount, getTodayClapCount, sendClap,
+  getTodayDoneCount, getTodayClapCount, sendClap, hasClappedToday,
   ensureAuth, getOthersPosts, checkPost, getMyCheerCount,
+  getStreakWeeks, getTitle, getComments, addComment, addReply,
+  getProfile, uploadDayImage,
 } from '@/lib/api';
 import { MiniChallengeDay, OthersDayPost } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
+import { calcTodayDayNumber as calcTodayDay } from '@/lib/api';
 
-function calcTodayDay(startedAt: string): number {
-  const start = new Date(startedAt);
-  const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const t = new Date();
-  const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-  const diff = Math.floor((today.getTime() - s.getTime()) / 86400000);
-  return Math.min(Math.max(diff + 1, 1), 7);
+type Comment = { id: string; nickname: string; body: string; created_at: string; reply_to: string | null };
+
+const THEMES: Record<string, { icon: string; color: string }> = {
+  '健康': { icon: '💊', color: '#34d399' },
+  'お金': { icon: '🪙', color: '#f0c040' },
+  '夢': { icon: '🔮', color: '#a78bfa' },
+  'キャリア': { icon: '📜', color: '#7dd3fc' },
+  '人間関係': { icon: '🫂', color: '#fda4af' },
+  'その他': { icon: '🧪', color: '#94a3b8' },
+};
+
+function CommentThread({ comments, dayId, onAdd }: {
+  comments: Comment[];
+  dayId: string;
+  onAdd: (body: string, replyTo?: string) => Promise<void>;
+}) {
+  const [input, setInput] = useState('');
+  const [replyTo, setReplyTo] = useState<{ id: string; nickname: string } | null>(null);
+  const [sending, setSending] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+
+  const topLevel = comments.filter(c => !c.reply_to);
+  const repliesFor = (parentId: string) => comments.filter(c => c.reply_to === parentId);
+  const PREVIEW = 2;
+  const visible = showAll ? topLevel : topLevel.slice(0, PREVIEW);
+  const hiddenCount = topLevel.length - PREVIEW;
+
+  async function handleSend() {
+    const body = input.trim();
+    if (!body) return;
+    setSending(true);
+    await onAdd(body, replyTo?.id);
+    setInput('');
+    setReplyTo(null);
+    setSending(false);
+    setShowAll(true);
+  }
+
+  return (
+    <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10 }}>
+      {topLevel.length === 0 && (
+        <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', marginBottom: 8 }}>
+          まだコメントはありません
+        </div>
+      )}
+
+      {visible.map(c => (
+        <div key={c.id} style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
+              <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
+            </div>
+            <button
+              onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
+              style={{ fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
+            >
+              {replyTo?.id === c.id ? '✕' : '返信'}
+            </button>
+          </div>
+          {repliesFor(c.id).map(r => (
+            <div key={r.id} style={{ marginLeft: 14, marginTop: 5, paddingLeft: 10, borderLeft: '2px solid #2d3f5a' }}>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
+              <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {!showAll && hiddenCount > 0 && (
+        <button onClick={() => setShowAll(true)} style={{ fontSize: 12, color: '#7dd3fc', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8 }}>
+          ▼ 他{hiddenCount}件を見る
+        </button>
+      )}
+      {showAll && topLevel.length > PREVIEW && (
+        <button onClick={() => setShowAll(false)} style={{ fontSize: 12, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8 }}>
+          ▲ 折りたたむ
+        </button>
+      )}
+
+      {replyTo && (
+        <div style={{ fontSize: 11, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+          ↩ {replyTo.nickname} に返信中
+          <button onClick={() => setReplyTo(null)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer' }}>✕</button>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && !sending && handleSend()}
+          placeholder={replyTo ? `${replyTo.nickname}へ返信...` : 'コメント（50文字以内）'}
+          maxLength={50}
+          style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, outline: 'none' }}
+        />
+        <button
+          onClick={handleSend}
+          disabled={!input.trim() || sending}
+          style={{ padding: '8px 14px', borderRadius: 10, border: 'none', background: input.trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: input.trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: input.trim() ? 'pointer' : 'not-allowed' }}
+        >
+          {sending ? '...' : '送信'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function ChallengePage() {
@@ -31,16 +133,22 @@ export default function ChallengePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [othersPosts, setOthersPosts] = useState<OthersDayPost[]>([]);
   const [cheerCount, setCheerCount] = useState(0);
-
-  // フォーム
+  const [goal, setGoal] = useState<string | null>(null);
+  const [theme, setChallengeTheme] = useState<string | null>(null);
+  const [streakWeeks, setStreakWeeks] = useState(0);
+  const [todayDayNum, setTodayDayNum] = useState(1);
+  const [myNickname, setMyNickname] = useState('');
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
+  const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState<'done' | 'not_done' | null>(null);
   const [nextStep, setNextStep] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  const [todayDayNum, setTodayDayNum] = useState(1);
   const todayFilled = days.some(d => d.day_number === todayDayNum);
   const canAddToday = todayDayNum <= 7 && !todayFilled && !showForm;
 
@@ -52,477 +160,314 @@ export default function ChallengePage() {
     setDoneCount(await getTodayDoneCount());
     setClapCount(await getTodayClapCount());
 
-    // チャレンジ開始日から今日が何日目か（このチャレンジを直接取得）
-    const { data: challenge, error: challengeError } = await supabase
-      .from('mini_challenges')
-      .select()
-      .eq('id', challengeId)
-      .maybeSingle();
-
-    console.log('challenge:', challenge, 'error:', challengeError);
-
-    // 完了済みなら完了画面へ
-    if (challenge?.status === 'completed') {
-      router.replace(`/challenge/${challengeId}/complete`);
-      return;
-    }
-
+    const { data: challenge } = await supabase.from('mini_challenges').select().eq('id', challengeId).maybeSingle();
+    if (challenge?.status === 'completed') { router.replace(`/challenge/${challengeId}/complete`); return; }
+    if (challenge?.goal) setGoal(challenge.goal);
+    if (challenge?.theme) setChallengeTheme(challenge.theme);
     const dayNum = challenge ? calcTodayDay(challenge.started_at) : 1;
     setTodayDayNum(dayNum);
 
     if (user) {
-      const others = await getOthersPosts(dayNum, user.id);
+      const [others, cheers, alreadyClapped, weeks, profile] = await Promise.all([
+        getOthersPosts(dayNum, user.id),
+        getMyCheerCount(challengeId, dayNum),
+        hasClappedToday(user.id),
+        getStreakWeeks(),
+        getProfile(user.id),
+      ]);
       setOthersPosts(others);
-      const cheers = await getMyCheerCount(challengeId, dayNum);
       setCheerCount(cheers);
+      setClapped(alreadyClapped);
+      setStreakWeeks(weeks);
+      setMyNickname(profile?.nickname ?? '');
     }
   }, [challengeId, router]);
 
   useEffect(() => { load(); }, [load]);
 
-  function openNewForm() {
-    setEditingDay(null);
-    setPlan('');
-    setStatus(null);
-    setNextStep('');
-    setShowForm(true);
-  }
-
-  function openEditForm(day: MiniChallengeDay) {
-    setEditingDay(day.day_number);
-    setPlan(day.plan);
-    setStatus(day.status);
-    setNextStep(day.next_step ?? '');
-    setShowForm(true);
-  }
-
-  function closeForm() {
-    setShowForm(false);
-    setEditingDay(null);
-    setPlan(''); setStatus(null); setNextStep('');
-  }
+  function openNewForm() { setEditingDay(null); setPlan(''); setStatus(null); setNextStep(''); setImageFile(null); setImagePreview(null); setShowForm(true); }
+  function openEditForm(day: MiniChallengeDay) { setEditingDay(day.day_number); setPlan(day.plan); setStatus(day.status); setNextStep(day.next_step ?? ''); setImageFile(null); setImagePreview(day.image_url ?? null); setShowForm(true); }
+  function closeForm() { setShowForm(false); setEditingDay(null); setPlan(''); setStatus(null); setNextStep(''); setImageFile(null); setImagePreview(null); }
 
   async function handleSave() {
-    if (!plan || !status) return;
+    if (!plan.trim() || !status) return;
     setSaving(true);
-    try {
-      const dayNum = editingDay ?? todayDayNum;
-      await saveDay(challengeId, dayNum, plan, status, nextStep);
-      if (dayNum === 7 && !editingDay) {
-        await completeChallenge(challengeId);
-        router.push(`/challenge/${challengeId}/complete`);
-        return;
-      }
-      await load();
-      closeForm();
-    } finally {
-      setSaving(false);
+    const targetDay = editingDay ?? todayDayNum;
+    let imageUrl: string | undefined;
+    if (imageFile) {
+      imageUrl = await uploadDayImage(imageFile, challengeId, targetDay);
+    } else if (imagePreview && imagePreview.startsWith('http')) {
+      imageUrl = imagePreview;
     }
+    await saveDay(challengeId, targetDay, plan.trim(), status, nextStep.trim() || undefined, imageUrl);
+    if (targetDay === 7 && status === 'done') { await completeChallenge(challengeId); router.replace(`/challenge/${challengeId}/complete`); return; }
+    await load(); closeForm(); setSaving(false);
   }
 
   async function handleClap() {
     if (clapped || !userId) return;
-    setClapped(true);
-    setClapCount(c => c + 1);
+    setClapped(true); setClapCount(c => c + 1);
     await sendClap(userId);
   }
 
-  async function handleCheck(post: OthersDayPost) {
-    if (post.already_checked || !userId) return;
-    setOthersPosts(prev => prev.map(p =>
-      p.id === post.id ? { ...p, check_count: p.check_count + 1, already_checked: true } : p
-    ));
-    await checkPost(userId, post.id);
+  async function handleCheck(postId: string, idx: number) {
+    if (!userId) return;
+    const updated = [...othersPosts];
+    updated[idx] = { ...updated[idx], already_checked: true, check_count: updated[idx].check_count + 1 };
+    setOthersPosts(updated);
+    await checkPost(userId, postId);
   }
 
-  const progressPct = (days.filter(d => d.status === 'done').length / 7) * 100;
+  async function toggleComments(dayId: string) {
+    if (openCommentId === dayId) { setOpenCommentId(null); return; }
+    setOpenCommentId(dayId);
+    // 常に最新を取得
+    const data = await getComments(dayId);
+    setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
+  }
+
+  async function handleAddComment(dayId: string, body: string, replyTo?: string) {
+    if (replyTo) await addReply(dayId, body, replyTo);
+    else await addComment(dayId, body);
+    // コメント後に投稿一覧も再取得（コメントした投稿が確実に表示されるよう）
+    const [data, others] = await Promise.all([
+      getComments(dayId),
+      getOthersPosts(todayDayNum, userId!),
+    ]);
+    setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
+    setOthersPosts(others);
+    // コメント欄を開いたままにする
+    setOpenCommentId(dayId);
+  }
+
+  const titleData = getTitle(streakWeeks);
+  const themeData = theme ? THEMES[theme] : null;
+  const daysProgress = days.filter(d => d.status === 'done').length;
 
   return (
-    <div style={{ paddingTop: 20 }}>
+    <div style={{ paddingTop: 24 }}>
       <style>{`
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pop { 0% { transform:scale(1); } 40% { transform:scale(1.15); } 100% { transform:scale(1); } }
-        @keyframes celebrate { 0% { transform:scale(0) rotate(-10deg); } 60% { transform:scale(1.2); } 100% { transform:scale(1); } }
-        .day-card:hover { transform:translateY(-2px); box-shadow: 0 5px 0 #ccc !important; }
-        .edit-tag:hover { background: #e5f4ff !important; color: #1cb0f6 !important; }
-        .save-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow: 0 8px 0 #46a302 !important; }
-        .save-btn:active:not(:disabled) { transform:translateY(4px); box-shadow:none !important; }
-        .clap-btn:hover { opacity:0.9; transform:scale(1.02); }
-        .check-btn:hover:not(:disabled) { transform:scale(1.08); }
-        .add-btn:hover { transform:translateY(-2px); box-shadow: 0 8px 0 #0a91d1 !important; }
+        @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+        @keyframes shimmer { 0%,100% { box-shadow:0 0 8px rgba(240,192,64,0.2); } 50% { box-shadow:0 0 20px rgba(240,192,64,0.5); } }
       `}</style>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 28, color: '#58cc02', textShadow: '0 3px 0 #46a302' }}>
-          mini<span style={{ color: '#1cb0f6' }}>buddy</span>
-        </div>
-        <div style={{
-          background: '#fff3d7', borderRadius: 100, padding: '6px 14px',
-          boxShadow: '0 3px 0 #ffe0a0',
-          fontFamily: 'Fredoka One, cursive', fontSize: 15, color: '#ff9600',
-          border: '2px solid #ffd080',
-        }}>
-          🔥 {doneCount}人達成
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 24, color: '#f0c040', textShadow: '0 0 15px rgba(240,192,64,0.4)' }}>Hagrit</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {myNickname && (
+            <button onClick={() => router.push('/settings')} style={{ background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 100, padding: '5px 12px', fontSize: 12, color: '#f0c040', fontWeight: 800, fontFamily: 'Nunito, sans-serif', cursor: 'pointer' }}>
+              🧙 {myNickname}
+            </button>
+          )}
+          <div style={{ background: 'rgba(52,211,153,0.1)', borderRadius: 100, padding: '5px 12px', border: '1px solid rgba(52,211,153,0.3)', fontSize: 11, color: '#34d399', fontWeight: 700 }}>
+            🔥 {doneCount}人修行中
+          </div>
         </div>
       </div>
 
-      {/* 応援バナー */}
-      {cheerCount > 0 && (
-        <div style={{
-          background: 'linear-gradient(135deg, #fff3d7, #ffe8b0)',
-          border: '2.5px solid #ffc800',
-          borderRadius: 16, padding: '12px 16px',
-          marginBottom: 16, textAlign: 'center',
-          boxShadow: '0 4px 0 #e0b000',
-          animation: 'fadeUp 0.4s ease',
-        }}>
-          <span style={{ fontSize: 20 }}>📣</span>
-          <span style={{ fontFamily: 'Fredoka One, cursive', fontSize: 16, color: '#ff9600', marginLeft: 8 }}>
-            今日{cheerCount}人があなたを応援中！
-          </span>
+      {/* 称号 */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ display: 'inline-block', background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.3)', borderRadius: 100, padding: '5px 14px', fontSize: 11, color: '#f0c040', fontWeight: 700, animation: 'shimmer 3s ease-in-out infinite' }}>
+          {titleData.emoji} {titleData.title}
+        </div>
+      </div>
+
+      {/* 目標カード */}
+      {goal && (
+        <div style={{ background: '#1e2d4a', borderRadius: 16, padding: '14px 16px', marginBottom: 14, border: '1px solid #2d3f5a' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            {themeData && <span style={{ color: themeData.color, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, border: `1px solid ${themeData.color}`, background: `${themeData.color}18` }}>{themeData.icon} {theme}</span>}
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>7日間の目標</span>
+          </div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 15, color: '#f1f5f9', lineHeight: 1.5 }}>{goal}</div>
         </div>
       )}
 
-      {/* Progress card */}
-      <div style={{
-        background: '#fff', borderRadius: 20, padding: 20,
-        boxShadow: '0 4px 0 #d0d0d0', marginBottom: 16,
-        animation: 'fadeUp 0.3s ease',
-      }}>
+      {/* 応援バナー */}
+      {cheerCount > 0 && (
+        <div style={{ background: 'rgba(240,192,64,0.07)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, textAlign: 'center' }}>
+          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人に応援されました！</span>
+        </div>
+      )}
+
+      {/* Progress */}
+      <div style={{ background: '#1e2d4a', borderRadius: 20, padding: 18, marginBottom: 14, border: '1px solid #2d3f5a' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 16, color: '#3c3c3c' }}>進捗</div>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 15, color: '#58cc02' }}>
-            {days.filter(d => d.status === 'done').length}/7 達成
-          </div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', letterSpacing: '0.05em' }}>修行の記録</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 20, color: '#f1f5f9' }}>{daysProgress}<span style={{ fontSize: 13, color: '#94a3b8' }}>/7</span></div>
         </div>
-        <div style={{ background: '#e5e5e5', borderRadius: 100, height: 14, marginBottom: 14, overflow: 'hidden' }}>
-          <div style={{
-            height: '100%', borderRadius: 100, width: `${progressPct}%`,
-            background: 'linear-gradient(90deg, #58cc02, #89e219)',
-            boxShadow: '0 2px 4px rgba(88,204,2,0.4)',
-            transition: 'width 0.6s cubic-bezier(0.16,1,0.3,1)',
-          }} />
+        <div style={{ height: 8, background: '#0f1729', borderRadius: 100, marginBottom: 14, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${(daysProgress / 7) * 100}%`, background: 'linear-gradient(90deg, #f0c040, #34d399)', borderRadius: 100, transition: 'width 0.5s ease' }} />
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
           {Array.from({ length: 7 }, (_, i) => {
-            const d = days.find(x => x.day_number === i + 1);
+            const day = days.find(d => d.day_number === i + 1);
             const isToday = i + 1 === todayDayNum;
-            const bg = d?.status === 'done' ? '#58cc02'
-              : d?.status === 'not_done' ? '#ff4b4b'
-              : isToday ? '#1cb0f6' : '#e5e5e5';
+            const isDone = day?.status === 'done';
+            const isNotDone = day?.status === 'not_done';
             return (
-              <div key={i} style={{
-                flex: 1, height: 8, borderRadius: 100, background: bg,
-                opacity: i + 1 > todayDayNum ? 0.3 : 1,
-                transition: 'all 0.3s',
-              }} />
+              <div key={i} style={{ width: 34, height: 34, borderRadius: 10, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : isNotDone ? 'rgba(248,113,113,0.15)' : isToday ? 'rgba(240,192,64,0.1)' : 'rgba(255,255,255,0.03)', border: `1.5px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : isToday ? 'rgba(240,192,64,0.5)' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : isToday ? '#f0c040' : '#94a3b8', animation: isToday && !day ? 'pulse 2s ease-in-out infinite' : 'none' }}>
+                {isDone ? '✦' : isNotDone ? '✕' : i + 1}
+              </div>
             );
           })}
         </div>
       </div>
 
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-        {[
-          { icon: '👏', num: clapCount, label: '今日の拍手', color: '#ff9600', bg: '#fff3d7', shadow: '#ffe0a0' },
-          { icon: '📅', num: days.length, label: '記録済み日数', color: '#ce82ff', bg: '#f1d9ff', shadow: '#e0b0ff' },
-        ].map(({ icon, num, label, color, bg, shadow }) => (
-          <div key={label} style={{
-            background: bg, borderRadius: 16, padding: '14px 12px',
-            textAlign: 'center', boxShadow: `0 4px 0 ${shadow}`,
-          }}>
-            <div style={{ fontSize: 22, marginBottom: 4 }}>{icon}</div>
-            <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 26, color, lineHeight: 1 }}>{num}</div>
-            <div style={{ fontSize: 11, color: '#999', fontWeight: 700, marginTop: 4 }}>{label}</div>
-          </div>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+        <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px', border: '1px solid #2d3f5a', textAlign: 'center' }}>
+          <div style={{ fontSize: 18, marginBottom: 4 }}>🔮</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#a78bfa' }}>{clapCount}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>魔力ポーション</div>
+        </div>
+        <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px', border: '1px solid #2d3f5a', textAlign: 'center' }}>
+          <div style={{ fontSize: 18, marginBottom: 4 }}>📅</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#a78bfa' }}>{daysProgress}</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>修行済み日数</div>
+        </div>
       </div>
 
-      {/* 今日の入力ボタン（未入力の場合） */}
+      {/* 記録ボタン */}
       {canAddToday && (
-        <button
-          onClick={openNewForm}
-          className="add-btn"
-          style={{
-            width: '100%', padding: '16px', borderRadius: 16, border: 'none',
-            background: '#1cb0f6', color: '#fff',
-            fontFamily: 'Fredoka One, cursive', fontSize: 18,
-            cursor: 'pointer', boxShadow: '0 6px 0 #0a91d1',
-            transition: 'all 0.15s', marginBottom: 16,
-          }}
-        >
-          ✏️ Day {todayDayNum} を記録する！
+        <button onClick={openNewForm} style={{ width: '100%', padding: '15px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #f0c040, #c49a20)', color: '#0f1729', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 0 #8a6000', marginBottom: 14, transition: 'all 0.15s' }}>
+          ✦ Day {todayDayNum} を記録する
         </button>
       )}
-
-      {/* 今日入力済みメッセージ */}
       {todayFilled && !showForm && (
-        <div style={{
-          background: '#f0fce4', border: '2.5px solid #58cc02',
-          borderRadius: 20, padding: '16px', textAlign: 'center', marginBottom: 16,
-          boxShadow: '0 4px 0 #c8f59a',
-        }}>
-          <div style={{ fontSize: 28, marginBottom: 6 }}>🎉</div>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 16, color: '#58cc02' }}>今日の記録完了！</div>
-          <div style={{ fontSize: 13, color: '#777', marginTop: 4, fontWeight: 700 }}>また明日！継続は力なり 💪</div>
+        <div style={{ background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 12, padding: '11px', marginBottom: 14, textAlign: 'center' }}>
+          <span style={{ fontSize: 13, color: '#34d399', fontWeight: 800 }}>✦ 今日の修行完了！</span>
         </div>
       )}
 
-      {/* フォーム（新規 or 編集） */}
+      {/* 記録フォーム */}
       {showForm && (
-        <div style={{
-          background: '#fff', borderRadius: 20, padding: 20,
-          boxShadow: '0 4px 0 #d0d0d0', marginBottom: 16,
-          border: '2.5px solid #1cb0f6',
-          animation: 'fadeUp 0.2s ease',
-        }}>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 17, color: '#1cb0f6', marginBottom: 16 }}>
-            {editingDay ? `Day ${editingDay} を編集` : `Day ${todayDayNum} を記録しよう！`}
+        <div style={{ background: '#1e2d4a', borderRadius: 20, padding: 20, marginBottom: 14, border: '1px solid rgba(240,192,64,0.3)', animation: 'fadeUp 0.3s ease' }}>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 14, color: '#f0c040', marginBottom: 16 }}>
+            {editingDay ? `Day ${editingDay} を編集` : `Day ${todayDayNum} の記録`}
           </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 13, fontWeight: 800, color: '#777', display: 'block', marginBottom: 6 }}>今日やること</label>
-            <input
-              value={plan}
-              onChange={e => setPlan(e.target.value)}
-              placeholder="例：競合5社のLPを分析する"
-              style={{
-                width: '100%', padding: '12px 14px',
-                border: '2.5px solid #e5e5e5', borderRadius: 12,
-                fontSize: 15, fontFamily: 'Nunito, sans-serif', fontWeight: 700,
-                color: '#3c3c3c', outline: 'none',
-              }}
-              onFocus={e => e.target.style.borderColor = '#1cb0f6'}
-              onBlur={e => e.target.style.borderColor = '#e5e5e5'}
-            />
+          <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: 6 }}>今日やったこと</label>
+          <textarea value={plan} onChange={e => setPlan(e.target.value)} placeholder="今日の取り組みを記録..." rows={3}
+            style={{ width: '100%', padding: '12px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 14, fontFamily: 'Nunito, sans-serif', fontWeight: 700, resize: 'none', marginBottom: 14, boxSizing: 'border-box' as const, outline: 'none' }} />
+          <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: 8 }}>達成度</label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
+            {([{ v: 'done' as const, label: '✦ できた！', color: '#34d399', border: '#34d399', bg: 'rgba(52,211,153,0.1)' }, { v: 'not_done' as const, label: '✕ できなかった', color: '#f87171', border: '#f87171', bg: 'rgba(248,113,113,0.1)' }]).map(opt => (
+              <button key={opt.v} onClick={() => setStatus(opt.v)}
+                style={{ padding: '11px', borderRadius: 10, border: `1.5px solid ${status === opt.v ? opt.border : '#2d3f5a'}`, background: status === opt.v ? opt.bg : 'transparent', color: status === opt.v ? opt.color : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer', transition: 'all 0.15s' }}>
+                {opt.label}
+              </button>
+            ))}
           </div>
+          <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: 6 }}>明日の一言（任意）</label>
+          <input value={nextStep} onChange={e => setNextStep(e.target.value)} placeholder="明日やること..."
+            style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 14, boxSizing: 'border-box' as const, outline: 'none' }} />
 
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 13, fontWeight: 800, color: '#777', display: 'block', marginBottom: 6 }}>実行した？</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['done', 'not_done'] as const).map(s => (
-                <button key={s} onClick={() => setStatus(s)} style={{
-                  flex: 1, padding: '12px 8px', borderRadius: 12,
-                  border: `2.5px solid ${status === s ? s === 'done' ? '#58cc02' : '#ff4b4b' : '#e5e5e5'}`,
-                  background: status === s ? s === 'done' ? '#f0fce4' : '#fff0f0' : '#fafafa',
-                  color: status === s ? s === 'done' ? '#58cc02' : '#ff4b4b' : '#999',
-                  fontFamily: 'Nunito, sans-serif', fontSize: 14, fontWeight: 800,
-                  cursor: 'pointer', transition: 'all 0.15s',
-                  boxShadow: status === s ? s === 'done' ? '0 3px 0 #c8f59a' : '0 3px 0 #ffc0c0' : '0 3px 0 #e0e0e0',
-                }}>
-                  {s === 'done' ? '✅ やった！' : '❌ できなかった'}
-                </button>
-              ))}
+          <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: 8 }}>画像（任意）</label>
+          {imagePreview ? (
+            <div style={{ position: 'relative', marginBottom: 14 }}>
+              <img src={imagePreview} alt="preview" style={{ width: '100%', borderRadius: 10, maxHeight: 200, objectFit: 'cover' }} />
+              <button onClick={() => { setImageFile(null); setImagePreview(null); }} style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: 100, color: '#fff', width: 28, height: 28, cursor: 'pointer', fontSize: 14 }}>✕</button>
             </div>
+          ) : (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '11px 14px', borderRadius: 10, border: '1px dashed #2d3f5a', cursor: 'pointer', marginBottom: 14, color: '#94a3b8', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>
+              📷 タップして画像を選択
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                setImageFile(file);
+                setImagePreview(URL.createObjectURL(file));
+              }} />
+            </label>
+          )}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <button onClick={closeForm} style={{ padding: '11px', borderRadius: 10, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>キャンセル</button>
+            <button onClick={handleSave} disabled={!plan.trim() || !status || saving}
+              style={{ padding: '11px', borderRadius: 10, border: 'none', background: (!plan.trim() || !status || saving) ? '#2d3f5a' : 'linear-gradient(135deg,#f0c040,#c49a20)', color: (!plan.trim() || !status || saving) ? '#94a3b8' : '#0f1729', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: (!plan.trim() || !status || saving) ? 'not-allowed' : 'pointer', boxShadow: (!plan.trim() || !status || saving) ? 'none' : '0 3px 0 #8a6000' }}>
+              {saving ? '記録中...' : '✦ 記録する'}
+            </button>
           </div>
-
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 13, fontWeight: 800, color: '#777', display: 'block', marginBottom: 6 }}>明日の一手（任意）</label>
-            <textarea
-              value={nextStep}
-              onChange={e => setNextStep(e.target.value)}
-              placeholder="例：明日は差別化ポイントをまとめる"
-              rows={2}
-              style={{
-                width: '100%', padding: '12px 14px',
-                border: '2.5px solid #e5e5e5', borderRadius: 12,
-                fontSize: 14, fontFamily: 'Nunito, sans-serif', fontWeight: 700,
-                color: '#3c3c3c', outline: 'none', resize: 'none',
-              }}
-              onFocus={e => e.target.style.borderColor = '#1cb0f6'}
-              onBlur={e => e.target.style.borderColor = '#e5e5e5'}
-            />
-          </div>
-
-          <button
-            onClick={handleSave}
-            disabled={saving || !plan || !status}
-            className="save-btn"
-            style={{
-              width: '100%', padding: '16px', borderRadius: 14, border: 'none',
-              background: saving || !plan || !status ? '#e5e5e5' : '#58cc02',
-              color: saving || !plan || !status ? '#afafaf' : '#fff',
-              fontFamily: 'Fredoka One, cursive', fontSize: 18,
-              cursor: saving || !plan || !status ? 'not-allowed' : 'pointer',
-              boxShadow: saving || !plan || !status ? 'none' : '0 6px 0 #46a302',
-              transition: 'all 0.15s', marginBottom: 10,
-            }}
-          >
-            {saving ? '保存中...' : `Day ${editingDay ?? todayDayNum} を保存！`}
-          </button>
-
-          <button onClick={closeForm} style={{
-            width: '100%', padding: '10px', borderRadius: 10,
-            border: '2px solid #e5e5e5', background: 'transparent',
-            color: '#afafaf', fontSize: 14, fontWeight: 700,
-            cursor: 'pointer', fontFamily: 'Nunito, sans-serif',
-          }}>
-            キャンセル
-          </button>
         </div>
       )}
 
-      {/* Day cards */}
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#3c3c3c', marginBottom: 10 }}>
-          7日ログ 📋
-        </div>
+      {/* 修行ログ（コメントなし） */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>修行ログ 📜</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {Array.from({ length: 7 }, (_, i) => {
-            const d = days.find(x => x.day_number === i + 1);
+            const day = days.find(d => d.day_number === i + 1);
             const isToday = i + 1 === todayDayNum;
-            const isFuture = i + 1 > todayDayNum;
-            const isEditing = editingDay === i + 1 && showForm;
-
-            const cardBg = d?.status === 'done' ? '#f0fce4'
-              : d?.status === 'not_done' ? '#fff0f0'
-              : isToday ? '#f0f8ff' : '#fafafa';
-            const borderColor = d?.status === 'done' ? '#58cc02'
-              : d?.status === 'not_done' ? '#ff4b4b'
-              : isToday ? '#1cb0f6' : '#e5e5e5';
-
+            const isDone = day?.status === 'done';
+            const isNotDone = day?.status === 'not_done';
             return (
-              <div key={i} className="day-card" style={{
-                background: cardBg, border: `2.5px solid ${borderColor}`,
-                borderRadius: 16, padding: '12px 14px',
-                display: 'flex', alignItems: 'center', gap: 12,
-                opacity: isFuture ? 0.5 : 1,
-                transition: 'all 0.15s',
-                boxShadow: d?.status === 'done' ? '0 3px 0 #c8f59a'
-                  : isToday ? '0 3px 0 #b3dfff' : '0 3px 0 #e0e0e0',
-              }}>
-                <div style={{
-                  width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                  background: d?.status === 'done' ? '#58cc02'
-                    : d?.status === 'not_done' ? '#ff4b4b'
-                    : isToday ? '#1cb0f6' : '#e5e5e5',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'Fredoka One, cursive', fontSize: 13, color: '#fff',
-                }}>
+              <div key={i}>
+              <div style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: day?.image_url ? '12px 12px 0 0' : 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
+                <div style={{ width: 26, height: 26, borderRadius: 8, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#0f1729', border: `1px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : '#94a3b8', flexShrink: 0 }}>
                   {i + 1}
                 </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 14, fontWeight: 800, color: isFuture ? '#bbb' : '#3c3c3c',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>
-                    {d?.plan || (isToday ? '← 今日の記録を入力！' : '未入力')}
-                  </div>
-                  {d?.next_step && (
-                    <div style={{ fontSize: 12, color: '#999', marginTop: 2 }}>→ {d.next_step}</div>
-                  )}
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: day ? '#f1f5f9' : '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'Nunito, sans-serif' }}>
+                  {day?.plan ?? (isToday ? '今日の記録待ち...' : '未記録')}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  {/* 編集ボタン（入力済みならいつでも） */}
-                  {d && !isEditing && (
-                    <button
-                      className="edit-tag"
-                      onClick={() => openEditForm(d)}
-                      style={{
-                        padding: '4px 10px', borderRadius: 8,
-                        border: '1.5px solid #e5e5e5', background: '#fafafa',
-                        fontSize: 12, fontWeight: 700, color: '#afafaf',
-                        cursor: 'pointer', transition: 'all 0.15s',
-                      }}
-                    >
-                      編集
-                    </button>
-                  )}
-                  <span style={{ fontSize: 20 }}>
-                    {d?.status === 'done' ? '✅' : d?.status === 'not_done' ? '❌' : isToday ? '✏️' : ''}
-                  </span>
-                </div>
+                {day && <button onClick={() => openEditForm(day)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
+                <span style={{ fontSize: 13, flexShrink: 0, color: isDone ? '#f0c040' : '#f87171' }}>{isDone ? '✦' : isNotDone ? '✕' : ''}</span>
+              </div>
+              {day?.image_url && (
+                <img src={day.image_url} alt="" style={{ width: '100%', borderRadius: '0 0 12px 12px', maxHeight: 180, objectFit: 'cover', display: 'block', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : '#2d3f5a'}`, borderTop: 'none' }} />
+              )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 仲間の気配（同じDay、最大3件） */}
+      {/* 仲間の気配（コメント・返信はここだけ） */}
       {othersPosts.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontFamily: 'Fredoka One, cursive', fontSize: 18, color: '#3c3c3c', marginBottom: 4 }}>
-            仲間の気配 👀
-          </div>
-          <div style={{ fontSize: 12, color: '#afafaf', fontWeight: 700, marginBottom: 10 }}>
-            同じDay{todayDayNum}に取り組む人たち（ランダム3件）
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {othersPosts.map(post => (
-              <div key={post.id} style={{
-                background: '#fff', border: '2px solid #e5e5e5',
-                borderRadius: 16, padding: '12px 14px',
-                display: 'flex', alignItems: 'center', gap: 12,
-                boxShadow: '0 3px 0 #e0e0e0',
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, color: '#afafaf', marginBottom: 4, fontWeight: 700 }}>
-                    <span style={{ color: '#ce82ff', fontWeight: 800 }}>{post.nickname}</span>
-                    {post.theme && (
-                      <span style={{
-                        marginLeft: 6, padding: '1px 7px', borderRadius: 100,
-                        background: '#f0f4ff', fontSize: 11, fontWeight: 800, color: '#6699ff',
-                        border: '1.5px solid #ccd9ff',
-                      }}>
-                        {post.theme === '健康' ? '💪' : post.theme === 'お金' ? '💰' : post.theme === '夢' ? '🌟' : post.theme === 'キャリア' ? '🚀' : post.theme === '人間関係' ? '❤️' : '✨'} {post.theme}
-                      </span>
-                    )}
-                    {' · '}
-                    <span style={{ color: post.status === 'done' ? '#58cc02' : '#ff4b4b' }}>
-                      {post.status === 'done' ? 'done ✅' : 'not done ❌'}
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 800, color: '#3c3c3c',
-                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                  }}>
-                    {post.plan}
-                  </div>
-                </div>
-                <button
-                  onClick={() => handleCheck(post)}
-                  disabled={post.already_checked}
-                  className="check-btn"
-                  style={{
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-                    padding: '8px 12px', borderRadius: 12, flexShrink: 0,
-                    border: `2px solid ${post.already_checked ? '#ce82ff' : '#e5e5e5'}`,
-                    background: post.already_checked ? '#f1d9ff' : '#fafafa',
-                    cursor: post.already_checked ? 'default' : 'pointer',
-                    transition: 'all 0.15s',
-                    boxShadow: post.already_checked ? '0 3px 0 #e0b0ff' : '0 3px 0 #e0e0e0',
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>📣</span>
-                  <span style={{ fontSize: 11, fontWeight: 800, color: post.already_checked ? '#ce82ff' : '#afafaf' }}>
-                    {post.already_checked ? '応援済' : '応援する'}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>仲間の気配 🌙</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {othersPosts.map((post, idx) => (
+              <div key={post.id} style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px 14px', border: '1px solid #2d3f5a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span onClick={() => router.push(`/user/${post.owner_user_id}`)} style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
+                    {post.nickname}
                   </span>
-                </button>
+                  {post.theme && (
+                    <span style={{ fontSize: 10, color: THEMES[post.theme]?.color ?? '#94a3b8', border: `1px solid ${THEMES[post.theme]?.color ?? '#94a3b8'}`, borderRadius: 100, padding: '1px 7px', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>
+                      {THEMES[post.theme]?.icon} {post.theme}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 'auto', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {post.day_number}</span>
+                </div>
+                <div style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 700, marginBottom: post.image_url ? 8 : 10, fontFamily: 'Nunito, sans-serif' }}>{post.plan}</div>
+                {post.image_url && (
+                  <img src={post.image_url} alt="" style={{ width: '100%', borderRadius: 10, maxHeight: 180, objectFit: 'cover', marginBottom: 10, display: 'block' }} />
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button onClick={() => toggleComments(post.id)} style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+                    💬 {comments[post.id] ? `${comments[post.id].length}件` : 'コメント'}
+                  </button>
+                  <button onClick={() => !post.already_checked && handleCheck(post.id, idx)} style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer', transition: 'all 0.15s' }}>
+                    {post.already_checked ? `✦ 応援した (${post.check_count})` : `✧ 応援する (${post.check_count})`}
+                  </button>
+                </div>
+                {openCommentId === post.id && (
+                  <CommentThread
+                    comments={comments[post.id] ?? []}
+                    dayId={post.id}
+                    onAdd={(body, replyTo) => handleAddComment(post.id, body, replyTo)}
+                  />
+                )}
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* 拍手ボタン */}
-      <button
-        onClick={handleClap}
-        className="clap-btn"
-        style={{
-          width: '100%', padding: '16px', borderRadius: 16, border: 'none',
-          background: clapped ? '#fff3d7' : '#ff9600',
-          color: clapped ? '#ff9600' : '#fff',
-          fontFamily: 'Fredoka One, cursive', fontSize: 17,
-          cursor: clapped ? 'default' : 'pointer',
-          boxShadow: clapped ? '0 4px 0 #ffe0a0' : '0 6px 0 #cc7a00',
-          transition: 'all 0.15s',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-          border: clapped ? '2.5px solid #ff9600' : 'none',
-        }}
-      >
-        <span style={{ fontSize: 22 }}>👏</span>
-        {clapped ? `拍手した！(${clapCount})` : `今日の達成者に拍手！(${clapCount})`}
+      {/* 魔力ポーション */}
+      <button onClick={handleClap} disabled={clapped} style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+        <span style={{ fontSize: 18 }}>🔮</span>
+        {clapped ? `魔力を送った！(${clapCount})` : `修行者に魔力を送る (${clapCount})`}
       </button>
     </div>
   );
