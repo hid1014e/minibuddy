@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   getDays, saveDay, completeChallenge,
   getTodayDoneCount, getTodayClapCount, sendClap, hasClappedToday,
   ensureAuth, getOthersPosts, checkPost, getMyCheerCount,
   getStreakWeeks, getTitle, getComments, addComment, addReply,
-  getProfile, getCommentsOnMyPost,
+  getProfile,
 } from '@/lib/api';
 import { MiniChallengeDay, OthersDayPost } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
@@ -24,7 +24,6 @@ const THEMES: Record<string, { icon: string; color: string }> = {
   'その他': { icon: '🧪', color: '#94a3b8' },
 };
 
-// ── コメントスレッド ───────────────────────────────────
 function CommentThread({ comments, dayId, onAdd }: {
   comments: Comment[];
   dayId: string;
@@ -62,44 +61,27 @@ function CommentThread({ comments, dayId, onAdd }: {
 
       {visible.map(c => (
         <div key={c.id} style={{ marginBottom: 10 }}>
-          {/* コメント本体 */}
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
             <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>
-                {c.nickname}
-              </span>
-              <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>
-                {c.body}
-              </span>
+              <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
+              <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
             </div>
-            {/* 返信ボタン：自分のコメントには不要だが全員に表示 */}
             <button
               onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
-              style={{
-                fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8',
-                background: 'transparent', border: 'none', cursor: 'pointer',
-                fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0, padding: '0 4px',
-              }}
+              style={{ fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
             >
               {replyTo?.id === c.id ? '✕' : '返信'}
             </button>
           </div>
-
-          {/* 返信一覧 */}
           {repliesFor(c.id).map(r => (
             <div key={r.id} style={{ marginLeft: 14, marginTop: 5, paddingLeft: 10, borderLeft: '2px solid #2d3f5a' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>
-                {r.nickname}
-              </span>
-              <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>
-                {r.body}
-              </span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
+              <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
             </div>
           ))}
         </div>
       ))}
 
-      {/* 折りたたみ */}
       {!showAll && hiddenCount > 0 && (
         <button onClick={() => setShowAll(true)} style={{ fontSize: 12, color: '#7dd3fc', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8 }}>
           ▼ 他{hiddenCount}件を見る
@@ -111,7 +93,6 @@ function CommentThread({ comments, dayId, onAdd }: {
         </button>
       )}
 
-      {/* 返信先表示 */}
       {replyTo && (
         <div style={{ fontSize: 11, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
           ↩ {replyTo.nickname} に返信中
@@ -119,7 +100,6 @@ function CommentThread({ comments, dayId, onAdd }: {
         </div>
       )}
 
-      {/* 入力 */}
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         <input
           value={input}
@@ -141,7 +121,6 @@ function CommentThread({ comments, dayId, onAdd }: {
   );
 }
 
-// ── メインページ ──────────────────────────────────────
 export default function ChallengePage() {
   const router = useRouter();
   const params = useParams();
@@ -159,13 +138,8 @@ export default function ChallengePage() {
   const [streakWeeks, setStreakWeeks] = useState(0);
   const [todayDayNum, setTodayDayNum] = useState(1);
   const [myNickname, setMyNickname] = useState('');
-
-  // コメント
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
-  const [myPostComments, setMyPostComments] = useState<Comment[]>([]);
-
-  // 記録フォーム
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState<'done' | 'not_done' | null>(null);
   const [nextStep, setNextStep] = useState('');
@@ -204,8 +178,6 @@ export default function ChallengePage() {
       setClapped(alreadyClapped);
       setStreakWeeks(weeks);
       setMyNickname(profile?.nickname ?? '');
-      const mc = await getCommentsOnMyPost(challengeId, dayNum);
-      setMyPostComments(mc as Comment[]);
     }
   }, [challengeId, router]);
 
@@ -302,7 +274,7 @@ export default function ChallengePage() {
       {/* 応援バナー */}
       {cheerCount > 0 && (
         <div style={{ background: 'rgba(240,192,64,0.07)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, textAlign: 'center' }}>
-          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人があなたを応援しています！</span>
+          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人に応援されました！</span>
         </div>
       )}
 
@@ -387,7 +359,7 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 修行ログ */}
+      {/* 修行ログ（コメントなし） */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>修行ログ 📜</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -397,8 +369,7 @@ export default function ChallengePage() {
             const isDone = day?.status === 'done';
             const isNotDone = day?.status === 'not_done';
             return (
-              <React.Fragment key={i}>
-              <div style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
+              <div key={i} style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
                 <div style={{ width: 26, height: 26, borderRadius: 8, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#0f1729', border: `1px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : '#94a3b8', flexShrink: 0 }}>
                   {i + 1}
                 </div>
@@ -408,31 +379,12 @@ export default function ChallengePage() {
                 {day && <button onClick={() => openEditForm(day)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
                 <span style={{ fontSize: 13, flexShrink: 0, color: isDone ? '#f0c040' : '#f87171' }}>{isDone ? '✦' : isNotDone ? '✕' : ''}</span>
               </div>
-              {/* 自分の今日の投稿へのコメント */}
-              {isToday && myPostComments.length > 0 && (
-                <div style={{ marginTop: 6, padding: '10px 14px', background: 'rgba(125,211,252,0.05)', border: '1px solid rgba(125,211,252,0.15)', borderRadius: '0 0 10px 10px', borderTop: 'none' }}>
-                  <div style={{ fontSize: 11, color: '#7dd3fc', fontWeight: 700, marginBottom: 8, fontFamily: 'Nunito, sans-serif' }}>💬 コメント {myPostComments.filter(c => !c.reply_to).length}件</div>
-                  {myPostComments.filter(c => !c.reply_to).map(c => (
-                    <div key={c.id} style={{ marginBottom: 6 }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
-                      <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
-                      {myPostComments.filter(r => r.reply_to === c.id).map(r => (
-                        <div key={r.id} style={{ marginLeft: 14, marginTop: 4, paddingLeft: 10, borderLeft: '2px solid #2d3f5a' }}>
-                          <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
-                          <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
-              </React.Fragment>
             );
           })}
         </div>
       </div>
 
-      {/* 仲間の気配 */}
+      {/* 仲間の気配（コメント・返信はここだけ） */}
       {othersPosts.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>仲間の気配 🌙</div>
@@ -440,10 +392,7 @@ export default function ChallengePage() {
             {othersPosts.map((post, idx) => (
               <div key={post.id} style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px 14px', border: '1px solid #2d3f5a' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span
-                    onClick={() => router.push(`/user/${post.owner_user_id}`)}
-                    style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}
-                  >
+                  <span onClick={() => router.push(`/user/${post.owner_user_id}`)} style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
                     {post.nickname}
                   </span>
                   {post.theme && (
@@ -455,16 +404,10 @@ export default function ChallengePage() {
                 </div>
                 <div style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 700, marginBottom: 10, fontFamily: 'Nunito, sans-serif' }}>{post.plan}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button
-                    onClick={() => toggleComments(post.id)}
-                    style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}
-                  >
+                  <button onClick={() => toggleComments(post.id)} style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
                     💬 {comments[post.id] ? `${comments[post.id].length}件` : 'コメント'}
                   </button>
-                  <button
-                    onClick={() => !post.already_checked && handleCheck(post.id, idx)}
-                    style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer', transition: 'all 0.15s' }}
-                  >
+                  <button onClick={() => !post.already_checked && handleCheck(post.id, idx)} style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer', transition: 'all 0.15s' }}>
                     {post.already_checked ? `✦ 応援した (${post.check_count})` : `✧ 応援する (${post.check_count})`}
                   </button>
                 </div>
@@ -482,8 +425,7 @@ export default function ChallengePage() {
       )}
 
       {/* 魔力ポーション */}
-      <button onClick={handleClap} disabled={clapped}
-        style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+      <button onClick={handleClap} disabled={clapped} style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <span style={{ fontSize: 18 }}>🔮</span>
         {clapped ? `魔力を送った！(${clapCount})` : `修行者に魔力を送る (${clapCount})`}
       </button>
