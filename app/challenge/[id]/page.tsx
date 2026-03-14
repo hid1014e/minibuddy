@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import {
   getDays, saveDay, completeChallenge,
@@ -397,7 +397,8 @@ export default function ChallengePage() {
             const isDone = day?.status === 'done';
             const isNotDone = day?.status === 'not_done';
             return (
-              <div key={i} style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
+              <React.Fragment key={i}>
+              <div style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
                 <div style={{ width: 26, height: 26, borderRadius: 8, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#0f1729', border: `1px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : '#94a3b8', flexShrink: 0 }}>
                   {i + 1}
                 </div>
@@ -425,6 +426,7 @@ export default function ChallengePage() {
                   ))}
                 </div>
               )}
+              </React.Fragment>
             );
           })}
         </div>
