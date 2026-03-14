@@ -77,12 +77,22 @@ export async function getDays(challengeId: string): Promise<MiniChallengeDay[]> 
   return data ?? [];
 }
 
+export async function uploadDayImage(file: File, challengeId: string, dayNumber: number): Promise<string> {
+  const ext = file.name.split('.').pop();
+  const path = `${challengeId}/${dayNumber}_${Date.now()}.${ext}`;
+  const { error } = await supabase.storage.from('post-images').upload(path, file, { upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from('post-images').getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function saveDay(
   challengeId: string,
   dayNumber: number,
   plan: string,
   status: 'done' | 'not_done',
-  nextStep?: string
+  nextStep?: string,
+  imageUrl?: string
 ) {
   const { error } = await supabase
     .from('mini_challenge_days')
@@ -93,6 +103,7 @@ export async function saveDay(
         plan,
         status,
         next_step: nextStep ?? null,
+        image_url: imageUrl ?? null,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'mini_challenge_id,day_number' }
@@ -167,6 +178,8 @@ export async function getOthersPosts(
       plan,
       status,
       day_number,
+      image_url,
+      updated_at,
       mini_challenges!inner ( owner_user_id, theme )
     `)
     .eq('day_number', dayNumber)
@@ -199,10 +212,11 @@ export async function getOthersPosts(
     .eq('user_id', myUserId);
   const commentedDayIds = new Set((myComments ?? []).map((r: any) => r.day_id));
 
-  // コメント済み投稿を優先、残りをランダムで補完（最大5件）
+  // コメント済み投稿は必ず含む、残りは新しい順で最大3件に
   const commented = others.filter(d => commentedDayIds.has(d.id));
-  const notCommented = others.filter(d => !commentedDayIds.has(d.id))
-    .sort(() => Math.random() - 0.5)
+  const notCommented = others
+    .filter(d => !commentedDayIds.has(d.id))
+    .sort((a, b) => new Date(b.updated_at ?? 0).getTime() - new Date(a.updated_at ?? 0).getTime())
     .slice(0, Math.max(0, 3 - commented.length));
   const shuffled = [...commented, ...notCommented];
 
@@ -232,6 +246,7 @@ export async function getOthersPosts(
       day_number: d.day_number,
       nickname: profile?.nickname ?? '匿名',
       theme: d.mini_challenges.theme ?? null,
+      image_url: d.image_url ?? null,
       check_count: dayChecks.length,
       already_checked: dayChecks.some((c: any) => c.checker_id === myUserId),
     };

@@ -19,6 +19,7 @@ export type MiniChallengeDay = {
   plan: string;
   status: DayStatus;
   next_step: string | null;
+  image_url: string | null;
   updated_at: string;
 };
 
@@ -36,6 +37,7 @@ export type OthersDayPost = {
   day_number: number;
   nickname: string;
   theme: string | null;
+  image_url: string | null;
   check_count: number;
   already_checked: boolean;
 };
