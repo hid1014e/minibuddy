@@ -2,26 +2,41 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ensureAuth, getProfile, deleteMyAccount } from '@/lib/api';
+import { ensureAuth, getProfile, deleteMyAccount, getBlockList, unblockUser } from '@/lib/api';
+
+type BlockedUser = { userId: string; nickname: string };
 
 export default function SettingsPage() {
   const router = useRouter();
   const [nickname, setNickname] = useState('');
+  const [blockList, setBlockList] = useState<BlockedUser[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [unblocking, setUnblocking] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       const user = await ensureAuth();
       if (!user) return;
-      const profile = await getProfile(user.id);
+      const [profile, blocks] = await Promise.all([
+        getProfile(user.id),
+        getBlockList(),
+      ]);
       setNickname(profile?.nickname ?? '');
+      setBlockList(blocks);
       setLoading(false);
     }
     load();
   }, []);
+
+  async function handleUnblock(userId: string) {
+    setUnblocking(userId);
+    await unblockUser(userId);
+    setBlockList(prev => prev.filter(b => b.userId !== userId));
+    setUnblocking(null);
+  }
 
   async function handleDelete() {
     if (deleteInput !== 'DELETE') return;
@@ -54,22 +69,45 @@ export default function SettingsPage() {
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#f1f5f9' }}>{nickname}</div>
       </div>
 
+      {/* ブロックリスト */}
+      <div style={{ background: '#1e2d4a', borderRadius: 16, padding: '16px 18px', marginBottom: 14, border: '1px solid #2d3f5a', animation: 'fadeUp 0.35s ease' }}>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 14, color: '#f0c040', marginBottom: 12 }}>🚫 ブロックリスト</div>
+        {blockList.length === 0 ? (
+          <div style={{ fontSize: 13, color: '#94a3b8', fontWeight: 700, fontFamily: 'Nunito, sans-serif' }}>ブロックしているユーザーはいません</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {blockList.map(b => (
+              <div key={b.userId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0f1729', borderRadius: 10, padding: '10px 14px', border: '1px solid #2d3f5a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>🧙</span>
+                  <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: 14, fontWeight: 800, color: '#f1f5f9' }}>{b.nickname}</span>
+                </div>
+                <button
+                  onClick={() => handleUnblock(b.userId)}
+                  disabled={unblocking === b.userId}
+                  style={{ padding: '6px 14px', borderRadius: 100, border: '1px solid rgba(52,211,153,0.4)', background: 'rgba(52,211,153,0.08)', color: '#34d399', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                >
+                  {unblocking === b.userId ? '...' : '解除する'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* アカウント削除 */}
       <div style={{ background: '#1e2d4a', borderRadius: 16, padding: '16px 18px', border: '1px solid rgba(248,113,113,0.2)', animation: 'fadeUp 0.4s ease' }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 14, color: '#f87171', marginBottom: 8 }}>アカウント削除</div>
         <div style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, marginBottom: 14, lineHeight: 1.7 }}>
           全ての修行記録・コメント・プロフィールが削除されます。この操作は取り消せません。
         </div>
-
         {!showDeleteConfirm ? (
           <button onClick={() => setShowDeleteConfirm(true)} style={{ padding: '10px 20px', borderRadius: 10, border: '1px solid rgba(248,113,113,0.4)', background: 'rgba(248,113,113,0.08)', color: '#f87171', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
             🗑️ アカウントを削除する
           </button>
         ) : (
           <div>
-            <div style={{ fontSize: 13, color: '#f87171', fontWeight: 800, marginBottom: 10 }}>
-              確認のため「DELETE」と入力してください
-            </div>
+            <div style={{ fontSize: 13, color: '#f87171', fontWeight: 800, marginBottom: 10 }}>確認のため「DELETE」と入力してください</div>
             <input
               value={deleteInput}
               onChange={e => setDeleteInput(e.target.value)}
@@ -77,9 +115,7 @@ export default function SettingsPage() {
               style={{ width: '100%', padding: '11px', borderRadius: 10, border: `1.5px solid ${deleteInput === 'DELETE' ? '#f87171' : '#2d3f5a'}`, background: '#0f1729', color: '#f1f5f9', fontSize: 14, fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 12, boxSizing: 'border-box' as const, outline: 'none' }}
             />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-              <button onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }} style={{ padding: '10px', borderRadius: 10, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>
-                キャンセル
-              </button>
+              <button onClick={() => { setShowDeleteConfirm(false); setDeleteInput(''); }} style={{ padding: '10px', borderRadius: 10, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}>キャンセル</button>
               <button onClick={handleDelete} disabled={deleteInput !== 'DELETE' || deleting} style={{ padding: '10px', borderRadius: 10, border: 'none', background: deleteInput === 'DELETE' ? '#f87171' : '#2d3f5a', color: deleteInput === 'DELETE' ? '#fff' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: deleteInput === 'DELETE' ? 'pointer' : 'not-allowed' }}>
                 {deleting ? '削除中...' : '削除する'}
               </button>

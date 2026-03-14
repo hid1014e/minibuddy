@@ -104,6 +104,8 @@ export default function ChallengePage() {
   const [showMyComments, setShowMyComments] = useState(false);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>({}); // 既読時のコメント数
+  const [latestCounts, setLatestCounts] = useState<Record<string, number>>({}); // 最新コメント数
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState<'done' | 'not_done' | null>(null);
   const [nextStep, setNextStep] = useState('');
@@ -144,6 +146,16 @@ export default function ChallengePage() {
       setStreakWeeks(weeks);
       setMyPostComments(mc as Comment[]);
       setMyNickname(profile?.nickname ?? '');
+      // 各投稿の最新コメント数を取得
+      const counts: Record<string, number> = {};
+      await Promise.all(others.map(async (post) => {
+        const { count } = await supabase
+          .from('post_comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('day_id', post.id);
+        counts[post.id] = count ?? 0;
+      }));
+      setLatestCounts(counts);
     }
   }, [challengeId, router]);
 
@@ -179,10 +191,10 @@ export default function ChallengePage() {
   async function toggleComments(dayId: string) {
     if (openCommentId === dayId) { setOpenCommentId(null); return; }
     setOpenCommentId(dayId);
-    if (!comments[dayId]) {
-      const data = await getComments(dayId);
-      setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
-    }
+    const data = await getComments(dayId);
+    setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
+    // 既読としてマーク
+    setCommentCounts(prev => ({ ...prev, [dayId]: data.length }));
   }
 
   async function handleAddComment(dayId: string, body: string, replyTo?: string) {
@@ -190,6 +202,8 @@ export default function ChallengePage() {
     else await addComment(dayId, body);
     const data = await getComments(dayId);
     setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
+    setCommentCounts(prev => ({ ...prev, [dayId]: data.length }));
+    setLatestCounts(prev => ({ ...prev, [dayId]: data.length }));
   }
 
   const titleData = getTitle(streakWeeks);
@@ -403,7 +417,23 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 魔力ポーション */}
+      {/* 仲間の気配へのコメント通知 */}
+      {othersPosts.some(p => (latestCounts[p.id] ?? 0) > (commentCounts[p.id] ?? 0)) && (
+        <div style={{ marginBottom: 14 }}>
+          {othersPosts.filter(p => (latestCounts[p.id] ?? 0) > (commentCounts[p.id] ?? 0)).map(post => {
+            const newCount = (latestCounts[post.id] ?? 0) - (commentCounts[post.id] ?? 0);
+            return (
+              <button key={post.id} onClick={() => toggleComments(post.id)}
+                style={{ width: '100%', background: 'rgba(167,139,250,0.07)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 8, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', textAlign: 'left' }}>
+                <span style={{ fontSize: 13, color: '#a78bfa', fontWeight: 800, fontFamily: 'Nunito, sans-serif' }}>
+                  💬 {post.nickname}の投稿に新規コメントが{newCount}件
+                </span>
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, fontFamily: 'Nunito, sans-serif' }}>見る →</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <button onClick={handleClap} disabled={clapped} style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <span style={{ fontSize: 18 }}>🔮</span>
         {clapped ? `魔力を送った！(${clapCount})` : `修行者に魔力を送る (${clapCount})`}

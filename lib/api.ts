@@ -282,7 +282,7 @@ export function getTitle(weeks: number): { title: string; emoji: string } {
 export async function getComments(dayId: string) {
   const { data } = await supabase
     .from('post_comments')
-    .select('id, nickname, body, created_at')
+    .select('id, nickname, body, created_at, reply_to')
     .eq('day_id', dayId)
     .order('created_at', { ascending: true });
   return data ?? [];
@@ -423,4 +423,24 @@ export async function getMyNickname(): Promise<string | null> {
   if (!user) return null;
   const profile = await getProfile(user.id);
   return profile?.nickname ?? null;
+}
+
+// ─── ブロックリスト取得（nickname付き）─────────────────
+export async function getBlockList(): Promise<{ userId: string; nickname: string }[]> {
+  const user = await ensureAuth();
+  if (!user) return [];
+  const { data: blocks } = await supabase
+    .from('user_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', user.id);
+  if (!blocks?.length) return [];
+  const ids = blocks.map((b: any) => b.blocked_id);
+  const { data: profiles } = await supabase
+    .from('user_profiles')
+    .select('user_id, nickname')
+    .in('user_id', ids);
+  return ids.map((id: string) => ({
+    userId: id,
+    nickname: (profiles ?? []).find((p: any) => p.user_id === id)?.nickname ?? '匿名',
+  }));
 }
