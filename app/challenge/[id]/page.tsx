@@ -7,7 +7,7 @@ import {
   getTodayDoneCount, getTodayClapCount, sendClap, hasClappedToday,
   ensureAuth, getOthersPosts, checkPost, getMyCheerCount,
   getStreakWeeks, getTitle, getComments, addComment, addReply,
-  getProfile,
+  getProfile, getCommentsOnMyPost,
 } from '@/lib/api';
 import { MiniChallengeDay, OthersDayPost } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
@@ -24,12 +24,11 @@ const THEMES: Record<string, { icon: string; color: string }> = {
   'その他': { icon: '🧪', color: '#94a3b8' },
 };
 
-// ── コメントスレッド（仲間の気配のみで使用） ───────────────────────────────────
-function CommentThread({ comments, dayId, onAdd, myNickname }: {
+// ── コメントスレッド ───────────────────────────────────
+function CommentThread({ comments, dayId, onAdd }: {
   comments: Comment[];
   dayId: string;
   onAdd: (body: string, replyTo?: string) => Promise<void>;
-  myNickname: string;
 }) {
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; nickname: string } | null>(null);
@@ -73,19 +72,17 @@ function CommentThread({ comments, dayId, onAdd, myNickname }: {
                 {c.body}
               </span>
             </div>
-            {/* 返信ボタン：相手のコメントにのみ表示（自分のコメントには出さない） */}
-            {c.nickname !== myNickname && (
-              <button
-                onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
-                style={{
-                  fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8',
-                  background: 'transparent', border: 'none', cursor: 'pointer',
-                  fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0, padding: '0 4px',
-                }}
-              >
-                {replyTo?.id === c.id ? '✕' : '返信'}
-              </button>
-            )}
+            {/* 返信ボタン：自分のコメントには不要だが全員に表示 */}
+            <button
+              onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
+              style={{
+                fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8',
+                background: 'transparent', border: 'none', cursor: 'pointer',
+                fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0, padding: '0 4px',
+              }}
+            >
+              {replyTo?.id === c.id ? '✕' : '返信'}
+            </button>
           </div>
 
           {/* 返信一覧 */}
@@ -166,6 +163,7 @@ export default function ChallengePage() {
   // コメント
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
+  const [myPostComments, setMyPostComments] = useState<Comment[]>([]);
 
   // 記録フォーム
   const [plan, setPlan] = useState('');
@@ -206,6 +204,8 @@ export default function ChallengePage() {
       setClapped(alreadyClapped);
       setStreakWeeks(weeks);
       setMyNickname(profile?.nickname ?? '');
+      const mc = await getCommentsOnMyPost(challengeId, dayNum);
+      setMyPostComments(mc as Comment[]);
     }
   }, [challengeId, router]);
 
@@ -235,7 +235,7 @@ export default function ChallengePage() {
     const updated = [...othersPosts];
     updated[idx] = { ...updated[idx], already_checked: true, check_count: updated[idx].check_count + 1 };
     setOthersPosts(updated);
-    await checkPost(postId, userId);
+    await checkPost(userId, postId);
   }
 
   async function toggleComments(dayId: string) {
@@ -299,10 +299,10 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 応援バナー（応援された方に表示） */}
+      {/* 応援バナー */}
       {cheerCount > 0 && (
         <div style={{ background: 'rgba(240,192,64,0.07)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, textAlign: 'center' }}>
-          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人に応援されました</span>
+          <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人があなたを応援しています！</span>
         </div>
       )}
 
@@ -407,12 +407,30 @@ export default function ChallengePage() {
                 {day && <button onClick={() => openEditForm(day)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
                 <span style={{ fontSize: 13, flexShrink: 0, color: isDone ? '#f0c040' : '#f87171' }}>{isDone ? '✦' : isNotDone ? '✕' : ''}</span>
               </div>
+              {/* 自分の今日の投稿へのコメント */}
+              {isToday && myPostComments.length > 0 && (
+                <div style={{ marginTop: 6, padding: '10px 14px', background: 'rgba(125,211,252,0.05)', border: '1px solid rgba(125,211,252,0.15)', borderRadius: '0 0 10px 10px', borderTop: 'none' }}>
+                  <div style={{ fontSize: 11, color: '#7dd3fc', fontWeight: 700, marginBottom: 8, fontFamily: 'Nunito, sans-serif' }}>💬 コメント {myPostComments.filter(c => !c.reply_to).length}件</div>
+                  {myPostComments.filter(c => !c.reply_to).map(c => (
+                    <div key={c.id} style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
+                      <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
+                      {myPostComments.filter(r => r.reply_to === c.id).map(r => (
+                        <div key={r.id} style={{ marginLeft: 14, marginTop: 4, paddingLeft: 10, borderLeft: '2px solid #2d3f5a' }}>
+                          <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
+                          <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              )}
             );
           })}
         </div>
       </div>
 
-      {/* 仲間の気配（自分以外の投稿のみ） */}
+      {/* 仲間の気配 */}
       {othersPosts.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>仲間の気配 🌙</div>
@@ -453,7 +471,6 @@ export default function ChallengePage() {
                     comments={comments[post.id] ?? []}
                     dayId={post.id}
                     onAdd={(body, replyTo) => handleAddComment(post.id, body, replyTo)}
-                    myNickname={myNickname}
                   />
                 )}
               </div>
