@@ -220,11 +220,9 @@ export default function ChallengePage() {
 
   async function toggleComments(dayId: string) {
     if (openCommentId === dayId) { setOpenCommentId(null); return; }
-    setOpenCommentId(dayId);
-    console.log('toggleComments dayId:', dayId);
     const data = await getComments(dayId);
-    console.log('comments fetched:', data);
     setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
+    setOpenCommentId(dayId);
   }
 
   async function handleAddComment(dayId: string, body: string, replyTo?: string) {

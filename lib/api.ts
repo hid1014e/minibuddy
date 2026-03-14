@@ -189,8 +189,6 @@ export async function getOthersPosts(
   if (error) { console.error('getOthersPosts error:', error); return []; }
   if (!allDays || allDays.length === 0) return [];
 
-  console.log('allDays:', allDays.length, allDays.map((d:any) => ({id: d.id, owner: d.mini_challenges.owner_user_id})));
-  console.log('myUserId:', myUserId);
 
   // ブロック済みユーザーIDを取得
   const { data: blocks } = await supabase
@@ -226,9 +224,6 @@ export async function getOthersPosts(
     commenterUserIds = new Set((commentsOnMe ?? []).map((r: any) => r.user_id));
   }
 
-  console.log('others:', others.length, others.map((d:any) => d.id));
-  console.log('commentedDayIds:', [...commentedDayIds]);
-  console.log('commenterUserIds:', [...commenterUserIds]);
 
   // コメント済み投稿 ＋ 自分にコメントしてきた人の投稿を必ず含む
   const priority = others.filter(d =>
