@@ -24,15 +24,31 @@ const THEMES: Record<string, { icon: string; color: string }> = {
   'その他': { icon: '🧪', color: '#94a3b8' },
 };
 
-function CommentThread({ comments, dayId, onAdd }: {
-  comments: Comment[];
+// コメントを自分でfetchする自己完結型コンポーネント
+function CommentThread({ dayId, onAdd }: {
   dayId: string;
   onAdd: (body: string, replyTo?: string) => Promise<void>;
 }) {
+  const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; nickname: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchComments() {
+      setLoading(true);
+      const data = await getComments(dayId);
+      if (!cancelled) {
+        setComments(data as Comment[]);
+        setLoading(false);
+      }
+    }
+    fetchComments();
+    return () => { cancelled = true; };
+  }, [dayId]);
 
   const topLevel = comments.filter(c => !c.reply_to);
   const repliesFor = (parentId: string) => comments.filter(c => c.reply_to === parentId);
@@ -49,14 +65,20 @@ function CommentThread({ comments, dayId, onAdd }: {
     setReplyTo(null);
     setSending(false);
     setShowAll(true);
+    const data = await getComments(dayId);
+    setComments(data as Comment[]);
   }
+
+  if (loading) return (
+    <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10, fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif' }}>
+      読み込み中...
+    </div>
+  );
 
   return (
     <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10 }}>
       {topLevel.length === 0 && (
-        <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', marginBottom: 8 }}>
-          まだコメントはありません
-        </div>
+        <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', marginBottom: 8 }}>まだコメントはありません</div>
       )}
 
       {visible.map(c => (
@@ -66,10 +88,8 @@ function CommentThread({ comments, dayId, onAdd }: {
               <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
               <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
             </div>
-            <button
-              onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
-              style={{ fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
-            >
+            <button onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
+              style={{ fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}>
               {replyTo?.id === c.id ? '✕' : '返信'}
             </button>
           </div>
@@ -101,19 +121,13 @@ function CommentThread({ comments, dayId, onAdd }: {
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
+        <input value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && !sending && handleSend()}
           placeholder={replyTo ? `${replyTo.nickname}へ返信...` : 'コメント（50文字以内）'}
           maxLength={50}
-          style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, outline: 'none' }}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || sending}
-          style={{ padding: '8px 14px', borderRadius: 10, border: 'none', background: input.trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: input.trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: input.trim() ? 'pointer' : 'not-allowed' }}
-        >
+          style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, outline: 'none' }} />
+        <button onClick={handleSend} disabled={!input.trim() || sending}
+          style={{ padding: '8px 14px', borderRadius: 10, border: 'none', background: input.trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: input.trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: input.trim() ? 'pointer' : 'not-allowed' }}>
           {sending ? '...' : '送信'}
         </button>
       </div>
@@ -138,7 +152,6 @@ export default function ChallengePage() {
   const [streakWeeks, setStreakWeeks] = useState(0);
   const [todayDayNum, setTodayDayNum] = useState(1);
   const [myNickname, setMyNickname] = useState('');
-  const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [openCommentId, setOpenCommentId] = useState<string | null>(null);
   const [plan, setPlan] = useState('');
   const [status, setStatus] = useState<'done' | 'not_done' | null>(null);
@@ -218,25 +231,14 @@ export default function ChallengePage() {
     await checkPost(userId, postId);
   }
 
-  async function toggleComments(dayId: string) {
-    if (openCommentId === dayId) { setOpenCommentId(null); return; }
-    const data = await getComments(dayId);
-    setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
-    setOpenCommentId(dayId);
-  }
-
   async function handleAddComment(dayId: string, body: string, replyTo?: string) {
     if (replyTo) await addReply(dayId, body, replyTo);
     else await addComment(dayId, body);
-    // コメント後に投稿一覧も再取得（コメントした投稿が確実に表示されるよう）
-    const [data, others] = await Promise.all([
-      getComments(dayId),
-      getOthersPosts(todayDayNum, userId!),
-    ]);
-    setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
-    setOthersPosts(others);
-    // コメント欄を開いたままにする
-    setOpenCommentId(dayId);
+    // コメント後に投稿一覧を再取得
+    if (userId) {
+      const others = await getOthersPosts(todayDayNum, userId);
+      setOthersPosts(others);
+    }
   }
 
   const titleData = getTitle(streakWeeks);
@@ -362,7 +364,6 @@ export default function ChallengePage() {
           <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: 6 }}>明日の一言（任意）</label>
           <input value={nextStep} onChange={e => setNextStep(e.target.value)} placeholder="明日やること..."
             style={{ width: '100%', padding: '11px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 14, boxSizing: 'border-box' as const, outline: 'none' }} />
-
           <label style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: 8 }}>画像（任意）</label>
           {imagePreview ? (
             <div style={{ position: 'relative', marginBottom: 14 }}>
@@ -390,7 +391,7 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 修行ログ（コメントなし） */}
+      {/* 修行ログ */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>修行ログ 📜</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -401,26 +402,26 @@ export default function ChallengePage() {
             const isNotDone = day?.status === 'not_done';
             return (
               <div key={i}>
-              <div style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: day?.image_url ? '12px 12px 0 0' : 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
-                <div style={{ width: 26, height: 26, borderRadius: 8, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#0f1729', border: `1px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : '#94a3b8', flexShrink: 0 }}>
-                  {i + 1}
+                <div style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: day?.image_url ? '12px 12px 0 0' : 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
+                  <div style={{ width: 26, height: 26, borderRadius: 8, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#0f1729', border: `1px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : '#94a3b8', flexShrink: 0 }}>
+                    {i + 1}
+                  </div>
+                  <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: day ? '#f1f5f9' : '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'Nunito, sans-serif' }}>
+                    {day?.plan ?? (isToday ? '今日の記録待ち...' : '未記録')}
+                  </div>
+                  {day && <button onClick={() => openEditForm(day)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
+                  <span style={{ fontSize: 13, flexShrink: 0, color: isDone ? '#f0c040' : '#f87171' }}>{isDone ? '✦' : isNotDone ? '✕' : ''}</span>
                 </div>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: day ? '#f1f5f9' : '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'Nunito, sans-serif' }}>
-                  {day?.plan ?? (isToday ? '今日の記録待ち...' : '未記録')}
-                </div>
-                {day && <button onClick={() => openEditForm(day)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
-                <span style={{ fontSize: 13, flexShrink: 0, color: isDone ? '#f0c040' : '#f87171' }}>{isDone ? '✦' : isNotDone ? '✕' : ''}</span>
-              </div>
-              {day?.image_url && (
-                <img src={day.image_url} alt="" style={{ width: '100%', borderRadius: '0 0 12px 12px', maxHeight: 180, objectFit: 'cover', display: 'block', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : '#2d3f5a'}`, borderTop: 'none' }} />
-              )}
+                {day?.image_url && (
+                  <img src={day.image_url} alt="" style={{ width: '100%', borderRadius: '0 0 12px 12px', maxHeight: 180, objectFit: 'cover', display: 'block', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : '#2d3f5a'}`, borderTop: 'none' }} />
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* 仲間の気配（コメント・返信はここだけ） */}
+      {/* 仲間の気配 */}
       {othersPosts.length > 0 && (
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>仲間の気配 🌙</div>
@@ -443,16 +444,18 @@ export default function ChallengePage() {
                   <img src={post.image_url} alt="" style={{ width: '100%', borderRadius: 10, maxHeight: 180, objectFit: 'cover', marginBottom: 10, display: 'block' }} />
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button onClick={() => toggleComments(post.id)} style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
-                    💬 {comments[post.id] ? `${comments[post.id].length}件` : 'コメント'}
+                  <button onClick={() => setOpenCommentId(openCommentId === post.id ? null : post.id)}
+                    style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer', transition: 'all 0.15s' }}>
+                    💬 コメント
                   </button>
-                  <button onClick={() => !post.already_checked && handleCheck(post.id, idx)} style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer', transition: 'all 0.15s' }}>
+                  <button onClick={() => !post.already_checked && handleCheck(post.id, idx)}
+                    style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer', transition: 'all 0.15s' }}>
                     {post.already_checked ? `✦ 応援した (${post.check_count})` : `✧ 応援する (${post.check_count})`}
                   </button>
                 </div>
                 {openCommentId === post.id && (
                   <CommentThread
-                    comments={comments[post.id] ?? []}
+                    key={post.id}
                     dayId={post.id}
                     onAdd={(body, replyTo) => handleAddComment(post.id, body, replyTo)}
                   />
@@ -464,7 +467,8 @@ export default function ChallengePage() {
       )}
 
       {/* 魔力ポーション */}
-      <button onClick={handleClap} disabled={clapped} style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+      <button onClick={handleClap} disabled={clapped}
+        style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', transition: 'all 0.15s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <span style={{ fontSize: 18 }}>🔮</span>
         {clapped ? `魔力を送った！(${clapCount})` : `修行者に魔力を送る (${clapCount})`}
       </button>
