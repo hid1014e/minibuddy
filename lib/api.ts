@@ -170,73 +170,40 @@ export async function getOthersPosts(
 ): Promise<OthersDayPost[]> {
   if (dayNumber < 1 || dayNumber > 7) return [];
 
-  // 同じday_numberの全投稿を取得
   const { data: allDays, error } = await supabase
     .from('mini_challenge_days')
-    .select(`
-      id,
-      plan,
-      status,
-      day_number,
-      image_url,
-      updated_at,
-      mini_challenges!inner ( owner_user_id, theme )
-    `)
+    .select('id,plan,status,day_number,image_url,updated_at,mini_challenges!inner(owner_user_id,theme)')
     .eq('day_number', dayNumber)
     .order('updated_at', { ascending: false })
     .limit(50);
 
-  if (error) { console.error('getOthersPosts error:', error); return []; }
-  if (!allDays || allDays.length === 0) return [];
+  if (error || !allDays || allDays.length === 0) return [];
 
-
-  // ブロック済みユーザーIDを取得
-  const { data: blocks } = await supabase
-    .from('user_blocks')
-    .select('blocked_id')
-    .eq('blocker_id', myUserId);
+  const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', myUserId);
   const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
 
-  // 自分以外・ブロック除外
-  const others = (allDays as any[]).filter(
-    d => d.mini_challenges.owner_user_id !== myUserId &&
-         !blockedIds.has(d.mini_challenges.owner_user_id)
+  const others = (allDays as any[]).filter(d =>
+    d.mini_challenges.owner_user_id !== myUserId &&
+    !blockedIds.has(d.mini_challenges.owner_user_id)
   );
   if (others.length === 0) return [];
 
-  // ① 自分がコメントした投稿IDを取得
-  const { data: myComments } = await supabase
-    .from('post_comments')
-    .select('day_id')
-    .eq('user_id', myUserId);
+  // 自分がコメントした投稿ID
+  const { data: myComments } = await supabase.from('post_comments').select('day_id').eq('user_id', myUserId);
   const commentedDayIds = new Set((myComments ?? []).map((r: any) => r.day_id));
 
-  // ② 自分の投稿にコメントしてきたユーザーIDを取得
-  const myDayIds = (allDays as any[])
-    .filter(d => d.mini_challenges.owner_user_id === myUserId)
-    .map(d => d.id);
+  // 自分の投稿にコメントしてきたユーザーID
+  const myDayIds = (allDays as any[]).filter(d => d.mini_challenges.owner_user_id === myUserId).map(d => d.id);
   let commenterUserIds = new Set<string>();
   if (myDayIds.length > 0) {
-    const { data: commentsOnMe } = await supabase
-      .from('post_comments')
-      .select('user_id')
-      .in('day_id', myDayIds);
+    const { data: commentsOnMe } = await supabase.from('post_comments').select('user_id').in('day_id', myDayIds);
     commenterUserIds = new Set((commentsOnMe ?? []).map((r: any) => r.user_id));
   }
 
-
-  // コメント済み投稿 ＋ 自分にコメントしてきた人の投稿を必ず含む
-  const priority = others.filter(d =>
-    commentedDayIds.has(d.id) ||
-    commenterUserIds.has(d.mini_challenges.owner_user_id)
-  );
-  const notPriority = others
-    .filter(d =>
-      !commentedDayIds.has(d.id) &&
-      !commenterUserIds.has(d.mini_challenges.owner_user_id)
-    )
-    .slice(0, Math.max(0, 3 - priority.length));
-  const selected = [...priority, ...notPriority].slice(0, Math.max(3, priority.length));
+  // コメント関係者を優先、残りを新しい順で補完、最大3件
+  const priority = others.filter(d => commentedDayIds.has(d.id) || commenterUserIds.has(d.mini_challenges.owner_user_id));
+  const rest = others.filter(d => !commentedDayIds.has(d.id) && !commenterUserIds.has(d.mini_challenges.owner_user_id)).slice(0, Math.max(0, 3 - priority.length));
+  const selected = [...priority, ...rest].slice(0, Math.max(3, priority.length));
 
   const dayIds = selected.map(d => d.id);
   const ownerIds = selected.map(d => d.mini_challenges.owner_user_id);
