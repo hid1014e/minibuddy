@@ -183,12 +183,10 @@ export async function getOthersPosts(
       mini_challenges!inner ( owner_user_id, theme )
     `)
     .eq('day_number', dayNumber)
+    .order('updated_at', { ascending: false })
     .limit(50);
 
-  if (error) {
-    console.error('getOthersPosts error:', error);
-    return [];
-  }
+  if (error) { console.error('getOthersPosts error:', error); return []; }
   if (!allDays || allDays.length === 0) return [];
 
   // ブロック済みユーザーIDを取得
@@ -205,23 +203,22 @@ export async function getOthersPosts(
   );
   if (others.length === 0) return [];
 
-  // 自分がコメントした投稿のIDを取得
+  // 自分がコメントした投稿IDを取得
   const { data: myComments } = await supabase
     .from('post_comments')
     .select('day_id')
     .eq('user_id', myUserId);
   const commentedDayIds = new Set((myComments ?? []).map((r: any) => r.day_id));
 
-  // コメント済み投稿は必ず含む、残りは新しい順で最大3件に
+  // コメント済み投稿は必ず含む → 残りを新しい順で補完 → 合計最大3件
   const commented = others.filter(d => commentedDayIds.has(d.id));
   const notCommented = others
     .filter(d => !commentedDayIds.has(d.id))
-    .sort((a, b) => new Date(b.updated_at ?? 0).getTime() - new Date(a.updated_at ?? 0).getTime())
     .slice(0, Math.max(0, 3 - commented.length));
-  const shuffled = [...commented, ...notCommented];
+  const selected = [...commented, ...notCommented].slice(0, Math.max(3, commented.length));
 
-  const dayIds = shuffled.map(d => d.id);
-  const ownerIds = shuffled.map(d => d.mini_challenges.owner_user_id);
+  const dayIds = selected.map(d => d.id);
+  const ownerIds = selected.map(d => d.mini_challenges.owner_user_id);
 
   // チェック数
   const { data: checks } = await supabase
@@ -235,13 +232,13 @@ export async function getOthersPosts(
     .select('user_id, nickname')
     .in('user_id', ownerIds);
 
-  return shuffled.map(d => {
+  return selected.map(d => {
     const dayChecks = (checks ?? []).filter((c: any) => c.target_day_id === d.id);
     const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
     return {
       id: d.id,
       owner_user_id: d.mini_challenges.owner_user_id,
-      plan: d.plan.slice(0, 20),
+      plan: d.plan.slice(0, 40),
       status: d.status,
       day_number: d.day_number,
       nickname: profile?.nickname ?? '匿名',

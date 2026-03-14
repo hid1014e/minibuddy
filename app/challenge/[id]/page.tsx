@@ -221,17 +221,23 @@ export default function ChallengePage() {
   async function toggleComments(dayId: string) {
     if (openCommentId === dayId) { setOpenCommentId(null); return; }
     setOpenCommentId(dayId);
-    if (!comments[dayId]) {
-      const data = await getComments(dayId);
-      setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
-    }
+    // 常に最新を取得
+    const data = await getComments(dayId);
+    setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
   }
 
   async function handleAddComment(dayId: string, body: string, replyTo?: string) {
     if (replyTo) await addReply(dayId, body, replyTo);
     else await addComment(dayId, body);
-    const data = await getComments(dayId);
+    // コメント後に投稿一覧も再取得（コメントした投稿が確実に表示されるよう）
+    const [data, others] = await Promise.all([
+      getComments(dayId),
+      getOthersPosts(todayDayNum, userId!),
+    ]);
     setComments(prev => ({ ...prev, [dayId]: data as Comment[] }));
+    setOthersPosts(others);
+    // コメント欄を開いたままにする
+    setOpenCommentId(dayId);
   }
 
   const titleData = getTitle(streakWeeks);
