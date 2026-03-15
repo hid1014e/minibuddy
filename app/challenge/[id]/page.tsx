@@ -5,10 +5,10 @@ import { useRouter, useParams } from 'next/navigation';
 import {
   getDays, saveDay, completeChallenge,
   getTodayDoneCount, getTodayClapCount, sendClap, hasClappedToday,
-  ensureAuth, getOthersPosts, checkPost, getMyCheerCount,
+  ensureAuth, checkPost, getMyCheerCount,
   getStreakWeeks, getTitle, getProfile, uploadDayImage,
 } from '@/lib/api';
-import { MiniChallengeDay, OthersDayPost } from '@/lib/types';
+import { MiniChallengeDay } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import { calcTodayDayNumber as calcTodayDay } from '@/lib/api';
 
@@ -21,75 +21,77 @@ const THEMES: Record<string, { icon: string; color: string }> = {
   'その他': { icon: '🧪', color: '#94a3b8' },
 };
 
+type Post = {
+  id: string;
+  owner_user_id: string;
+  plan: string;
+  status: string;
+  day_number: number;
+  image_url: string | null;
+  nickname: string;
+  theme: string | null;
+  check_count: number;
+  already_checked: boolean;
+};
+
 type Comment = {
   id: string;
+  user_id: string;
   nickname: string;
   body: string;
   reply_to: string | null;
   created_at: string;
 };
 
-// コメント欄コンポーネント（完全自己完結）
-function CommentSection({ dayId }: { dayId: string }) {
+// ── コメント欄（完全独立・直接Supabase）──────────────────
+function CommentSection({ postId, myUserId }: { postId: string; myUserId: string }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; nickname: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const PREVIEW = 3;
 
-  const fetchComments = useCallback(async () => {
+  const refresh = useCallback(async () => {
     const { data } = await supabase
       .from('post_comments')
-      .select('id, nickname, body, reply_to, created_at')
-      .eq('day_id', dayId)
+      .select('id, user_id, nickname, body, reply_to, created_at')
+      .eq('day_id', postId)
       .order('created_at', { ascending: true });
-    setComments((data as Comment[]) ?? []);
-  }, [dayId]);
+    setComments((data ?? []) as Comment[]);
+  }, [postId]);
 
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+  useEffect(() => { refresh(); }, [refresh]);
 
   const topLevel = comments.filter(c => !c.reply_to);
-  const repliesFor = (parentId: string) => comments.filter(c => c.reply_to === parentId);
-  const PREVIEW = 3;
+  const repliesFor = (pid: string) => comments.filter(c => c.reply_to === pid);
   const visible = showAll ? topLevel : topLevel.slice(0, PREVIEW);
 
-  async function handleSend() {
+  async function send() {
     const body = input.trim();
     if (!body || sending) return;
     setSending(true);
-
-    const user = await ensureAuth();
-    if (!user) { setSending(false); return; }
-
-    const { data: profile } = await supabase
-      .from('user_profiles')
-      .select('nickname')
-      .eq('user_id', user.id)
-      .maybeSingle();
-
+    const { data: prof } = await supabase.from('user_profiles').select('nickname').eq('user_id', myUserId).maybeSingle();
     await supabase.from('post_comments').insert({
-      day_id: dayId,
-      user_id: user.id,
-      nickname: profile?.nickname ?? '匿名',
+      day_id: postId,
+      user_id: myUserId,
+      nickname: prof?.nickname ?? '匿名',
       body,
       reply_to: replyTo?.id ?? null,
     });
-
     setInput('');
     setReplyTo(null);
     setSending(false);
+    await refresh();
     setShowAll(true);
-    await fetchComments();
   }
 
   return (
     <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10 }}>
       {topLevel.length === 0 && (
-        <div style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', marginBottom: 8 }}>
+        <p style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', margin: '0 0 8px' }}>
           まだコメントはありません
-        </div>
+        </p>
       )}
 
       {visible.map(c => (
@@ -116,12 +118,12 @@ function CommentSection({ dayId }: { dayId: string }) {
       ))}
 
       {!showAll && topLevel.length > PREVIEW && (
-        <button onClick={() => setShowAll(true)} style={{ fontSize: 12, color: '#7dd3fc', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8 }}>
+        <button onClick={() => setShowAll(true)} style={{ fontSize: 12, color: '#7dd3fc', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8, display: 'block' }}>
           ▼ 他{topLevel.length - PREVIEW}件を見る
         </button>
       )}
       {showAll && topLevel.length > PREVIEW && (
-        <button onClick={() => setShowAll(false)} style={{ fontSize: 12, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8 }}>
+        <button onClick={() => setShowAll(false)} style={{ fontSize: 12, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8, display: 'block' }}>
           ▲ 折りたたむ
         </button>
       )}
@@ -129,21 +131,21 @@ function CommentSection({ dayId }: { dayId: string }) {
       {replyTo && (
         <div style={{ fontSize: 11, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
           ↩ {replyTo.nickname} に返信中
-          <button onClick={() => setReplyTo(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 11 }}>✕</button>
+          <button onClick={() => setReplyTo(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 12 }}>✕</button>
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
+          onKeyDown={e => e.key === 'Enter' && send()}
           placeholder={replyTo ? `${replyTo.nickname}へ返信...` : 'コメント（50文字以内）'}
           maxLength={50}
           style={{ flex: 1, padding: '8px 12px', borderRadius: 10, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 13, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
         />
         <button
-          onClick={handleSend}
+          onClick={send}
           disabled={!input.trim() || sending}
           style={{ padding: '8px 14px', borderRadius: 10, border: 'none', background: input.trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: input.trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: input.trim() ? 'pointer' : 'not-allowed' }}
         >
@@ -154,6 +156,7 @@ function CommentSection({ dayId }: { dayId: string }) {
   );
 }
 
+// ── メインページ ──────────────────────────────────────
 export default function ChallengePage() {
   const router = useRouter();
   const params = useParams();
@@ -164,7 +167,7 @@ export default function ChallengePage() {
   const [clapCount, setClapCount] = useState(0);
   const [clapped, setClapped] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  const [othersPosts, setOthersPosts] = useState<OthersDayPost[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [cheerCount, setCheerCount] = useState(0);
   const [goal, setGoal] = useState<string | null>(null);
   const [theme, setChallengeTheme] = useState<string | null>(null);
@@ -184,6 +187,52 @@ export default function ChallengePage() {
   const todayFilled = days.some(d => d.day_number === todayDayNum);
   const canAddToday = todayDayNum <= 7 && !todayFilled && !showForm;
 
+  const loadPosts = useCallback(async (dayNum: number, uid: string) => {
+    // 同じDay番号の全投稿を取得（自分以外）
+    const { data: allDays } = await supabase
+      .from('mini_challenge_days')
+      .select('id, plan, status, day_number, image_url, mini_challenges!inner(owner_user_id, theme)')
+      .eq('day_number', dayNum)
+      .order('updated_at', { ascending: false });
+
+    if (!allDays || allDays.length === 0) { setPosts([]); return; }
+
+    // ブロック済み除外
+    const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', uid);
+    const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
+
+    const others = (allDays as any[]).filter(d =>
+      d.mini_challenges.owner_user_id !== uid &&
+      !blockedIds.has(d.mini_challenges.owner_user_id)
+    );
+    if (others.length === 0) { setPosts([]); return; }
+
+    const ownerIds = others.map((d: any) => d.mini_challenges.owner_user_id);
+    const dayIds = others.map((d: any) => d.id);
+
+    const [{ data: profiles }, { data: checks }] = await Promise.all([
+      supabase.from('user_profiles').select('user_id, nickname').in('user_id', ownerIds),
+      supabase.from('day_checks').select('target_day_id, checker_id').in('target_day_id', dayIds),
+    ]);
+
+    setPosts(others.map((d: any) => {
+      const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
+      const dayChecks = (checks ?? []).filter((c: any) => c.target_day_id === d.id);
+      return {
+        id: d.id,
+        owner_user_id: d.mini_challenges.owner_user_id,
+        plan: d.plan ?? '',
+        status: d.status,
+        day_number: d.day_number,
+        image_url: d.image_url ?? null,
+        nickname: profile?.nickname ?? '匿名',
+        theme: d.mini_challenges.theme ?? null,
+        check_count: dayChecks.length,
+        already_checked: dayChecks.some((c: any) => c.checker_id === uid),
+      };
+    }));
+  }, []);
+
   const load = useCallback(async () => {
     const user = await ensureAuth();
     setUserId(user?.id ?? null);
@@ -200,20 +249,19 @@ export default function ChallengePage() {
     setTodayDayNum(dayNum);
 
     if (user) {
-      const [others, cheers, alreadyClapped, weeks, profile] = await Promise.all([
-        getOthersPosts(dayNum, user.id),
+      const [cheers, alreadyClapped, weeks, profile] = await Promise.all([
         getMyCheerCount(challengeId, dayNum),
         hasClappedToday(user.id),
         getStreakWeeks(),
         getProfile(user.id),
       ]);
-      setOthersPosts(others);
       setCheerCount(cheers);
       setClapped(alreadyClapped);
       setStreakWeeks(weeks);
       setMyNickname(profile?.nickname ?? '');
+      await loadPosts(dayNum, user.id);
     }
-  }, [challengeId, router]);
+  }, [challengeId, router, loadPosts]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -241,9 +289,9 @@ export default function ChallengePage() {
 
   async function handleCheck(postId: string, idx: number) {
     if (!userId) return;
-    const updated = [...othersPosts];
+    const updated = [...posts];
     updated[idx] = { ...updated[idx], already_checked: true, check_count: updated[idx].check_count + 1 };
-    setOthersPosts(updated);
+    setPosts(updated);
     await checkPost(userId, postId);
   }
 
@@ -428,11 +476,15 @@ export default function ChallengePage() {
       </div>
 
       {/* 仲間の気配 */}
-      {othersPosts.length > 0 && (
-        <div style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>仲間の気配 🌙</div>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>仲間の気配 🌙</div>
+        {posts.length === 0 ? (
+          <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '20px', textAlign: 'center', border: '1px solid #2d3f5a', color: '#94a3b8', fontSize: 13, fontWeight: 700 }}>
+            まだ仲間がいません
+          </div>
+        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {othersPosts.map((post, idx) => (
+            {posts.map((post, idx) => (
               <div key={post.id} style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px 14px', border: '1px solid #2d3f5a' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                   <span onClick={() => router.push(`/user/${post.owner_user_id}`)} style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
@@ -460,12 +512,14 @@ export default function ChallengePage() {
                     {post.already_checked ? `✦ 応援した (${post.check_count})` : `✧ 応援する (${post.check_count})`}
                   </button>
                 </div>
-                {openCommentId === post.id && <CommentSection dayId={post.id} />}
+                {openCommentId === post.id && userId && (
+                  <CommentSection key={post.id} postId={post.id} myUserId={userId} />
+                )}
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 魔力ポーション */}
       <button onClick={handleClap} disabled={clapped}
