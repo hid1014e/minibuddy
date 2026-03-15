@@ -197,12 +197,11 @@ export default function ChallengePage() {
 
     if (!allDays || allDays.length === 0) { setPosts([]); return; }
 
-    // ブロック済み除外
+    // ブロック済み除外（自分の投稿は含める）
     const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', uid);
     const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
 
     const others = (allDays as any[]).filter(d =>
-      d.mini_challenges.owner_user_id !== uid &&
       !blockedIds.has(d.mini_challenges.owner_user_id)
     );
     if (others.length === 0) { setPosts([]); return; }
