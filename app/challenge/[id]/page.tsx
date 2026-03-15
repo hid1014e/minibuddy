@@ -110,8 +110,35 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
           </div>
           {repliesFor(c.id).map(r => (
             <div key={r.id} style={{ marginLeft: 16, marginTop: 4, paddingLeft: 10, borderLeft: '2px solid #2d3f5a' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
-              <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
+                  <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
+                </div>
+                <button
+                  onClick={() => setReplyTo(replyTo?.id === r.id ? null : { id: r.id, nickname: r.nickname })}
+                  style={{ fontSize: 11, color: replyTo?.id === r.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
+                >
+                  {replyTo?.id === r.id ? '✕' : '返信'}
+                </button>
+              </div>
+              {/* 返信への返信 */}
+              {comments.filter(rr => rr.reply_to === r.id).map(rr => (
+                <div key={rr.id} style={{ marginLeft: 14, marginTop: 4, paddingLeft: 10, borderLeft: '2px solid #1e2d4a' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                    <div style={{ flex: 1 }}>
+                      <span style={{ fontSize: 11, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{rr.nickname}</span>
+                      <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{rr.body}</span>
+                    </div>
+                    <button
+                      onClick={() => setReplyTo(replyTo?.id === rr.id ? null : { id: rr.id, nickname: rr.nickname })}
+                      style={{ fontSize: 11, color: replyTo?.id === rr.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
+                    >
+                      {replyTo?.id === rr.id ? '✕' : '返信'}
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
         </div>
