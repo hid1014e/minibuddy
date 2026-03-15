@@ -63,9 +63,9 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const topLevel = comments.filter(c => !c.reply_to);
-  const repliesFor = (pid: string) => comments.filter(c => c.reply_to === pid);
-  const visible = showAll ? topLevel : topLevel.slice(0, PREVIEW);
+  // 全コメントをフラットに表示（返信先を@で示す）
+  const visible = showAll ? comments : comments.slice(0, PREVIEW);
+  const hidden = comments.length - PREVIEW;
 
   async function send() {
     const body = input.trim();
@@ -86,43 +86,44 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
     setShowAll(true);
   }
 
+  // 返信先のnicknameを取得
+  const nicknameOf = (id: string) => comments.find(c => c.id === id)?.nickname ?? '';
+
   return (
     <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10 }}>
-      {topLevel.length === 0 && (
+      {comments.length === 0 && (
         <p style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', margin: '0 0 8px' }}>
           まだコメントはありません
         </p>
       )}
 
       {visible.map(c => (
-        <div key={c.id} style={{ marginBottom: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
-              <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{c.body}</span>
-            </div>
-            <button
-              onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
-              style={{ fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
-            >
-              {replyTo?.id === c.id ? '✕' : '返信'}
-            </button>
+        <div key={c.id} style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+          <div style={{ flex: 1 }}>
+            <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{c.nickname}</span>
+            {c.reply_to && (
+              <span style={{ fontSize: 11, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif', marginLeft: 6 }}>
+                @{nicknameOf(c.reply_to)}
+              </span>
+            )}
+            <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 6 }}>{c.body}</span>
           </div>
-          {repliesFor(c.id).map(r => (
-            <div key={r.id} style={{ marginLeft: 16, marginTop: 4, paddingLeft: 10, borderLeft: '2px solid #2d3f5a' }}>
-              <span style={{ fontSize: 11, fontWeight: 800, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif' }}>{r.nickname}</span>
-              <span style={{ fontSize: 12, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>{r.body}</span>
-            </div>
-          ))}
+          <button
+            onClick={() => setReplyTo(replyTo?.id === c.id ? null : { id: c.id, nickname: c.nickname })}
+            style={{ fontSize: 11, color: replyTo?.id === c.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}
+          >
+            {replyTo?.id === c.id ? '✕' : '返信'}
+          </button>
         </div>
       ))}
 
-      {!showAll && topLevel.length > PREVIEW && (
+      {/* 折りたたみ */}
+      {!showAll && hidden > 0 && (
         <button onClick={() => setShowAll(true)} style={{ fontSize: 12, color: '#7dd3fc', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8, display: 'block' }}>
-          ▼ 他{topLevel.length - PREVIEW}件を見る
+          ▼ 他{hidden}件を見る
         </button>
       )}
-      {showAll && topLevel.length > PREVIEW && (
+      {showAll && comments.length > PREVIEW && (
         <button onClick={() => setShowAll(false)} style={{ fontSize: 12, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8, display: 'block' }}>
           ▲ 折りたたむ
         </button>
@@ -197,12 +198,11 @@ export default function ChallengePage() {
 
     if (!allDays || allDays.length === 0) { setPosts([]); return; }
 
-    // ブロック済み除外
+    // ブロック済み除外（自分の投稿は含める）
     const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', uid);
     const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
 
     const others = (allDays as any[]).filter(d =>
-      d.mini_challenges.owner_user_id !== uid &&
       !blockedIds.has(d.mini_challenges.owner_user_id)
     );
     if (others.length === 0) { setPosts([]); return; }
@@ -277,7 +277,7 @@ export default function ChallengePage() {
     if (imageFile) imageUrl = await uploadDayImage(imageFile, challengeId, targetDay);
     else if (imagePreview?.startsWith('http')) imageUrl = imagePreview;
     await saveDay(challengeId, targetDay, plan.trim(), status, nextStep.trim() || undefined, imageUrl);
-    if (targetDay === 7 && status === 'done') { await completeChallenge(challengeId); router.replace(`/challenge/${challengeId}/complete`); return; }
+    if (targetDay === 7) { await completeChallenge(challengeId); router.replace(`/challenge/${challengeId}/complete`); return; }
     await load(); closeForm(); setSaving(false);
   }
 
