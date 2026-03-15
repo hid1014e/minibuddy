@@ -192,7 +192,7 @@ export default function ChallengePage() {
     // 同じDay番号の全投稿を取得（自分以外）
     const { data: allDays } = await supabase
       .from('mini_challenge_days')
-      .select('id, plan, status, day_number, image_url, mini_challenges!inner(owner_user_id, theme)')
+      .select('id, plan, status, day_number, image_url, mini_challenge_id, mini_challenges!inner(id, owner_user_id, theme)')
       .eq('day_number', dayNum)
       .order('updated_at', { ascending: false });
 
@@ -210,24 +210,26 @@ export default function ChallengePage() {
     const ownerIds = others.map((d: any) => d.mini_challenges.owner_user_id);
     const dayIds = others.map((d: any) => d.id);
 
-    const [{ data: profiles }, { data: checks }, { data: completedCounts }] = await Promise.all([
+    const [{ data: profiles }, { data: checks }, { data: allChallenges }] = await Promise.all([
       supabase.from('user_profiles').select('user_id, nickname').in('user_id', ownerIds),
       supabase.from('day_checks').select('target_day_id, checker_id').in('target_day_id', dayIds),
-      supabase.from('mini_challenges').select('owner_user_id').in('owner_user_id', ownerIds).eq('status', 'completed'),
+      supabase.from('mini_challenges').select('id, owner_user_id, started_at').in('owner_user_id', ownerIds).order('started_at', { ascending: true }),
     ]);
 
-    // ユーザーごとの完了数をカウント
-    const weekMap: Record<string, number> = {};
-    (completedCounts ?? []).forEach((c: any) => {
-      weekMap[c.owner_user_id] = (weekMap[c.owner_user_id] ?? 0) + 1;
+    // 各チャレンジが何周目かを計算
+    const challengeWeekMap: Record<string, number> = {};
+    const userChallengeCount: Record<string, number> = {};
+    (allChallenges ?? []).forEach((c: any) => {
+      userChallengeCount[c.owner_user_id] = (userChallengeCount[c.owner_user_id] ?? 0) + 1;
+      challengeWeekMap[c.id] = userChallengeCount[c.owner_user_id];
     });
 
     setPosts(others.map((d: any) => {
       const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
       const dayChecks = (checks ?? []).filter((c: any) => c.target_day_id === d.id);
       const baseNickname = profile?.nickname ?? '匿名';
-      const weeks = weekMap[d.mini_challenges.owner_user_id] ?? 0;
-      const nickname = weeks >= 2 ? `${baseNickname}（${weeks}周目）` : baseNickname;
+      const weekNum = challengeWeekMap[d.mini_challenges.id] ?? 1;
+      const nickname = weekNum >= 2 ? `${baseNickname}（${weekNum}周目）` : baseNickname;
       return {
         id: d.id,
         owner_user_id: d.mini_challenges.owner_user_id,
