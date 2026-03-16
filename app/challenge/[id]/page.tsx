@@ -386,9 +386,9 @@ export default function ChallengePage() {
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
         <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px', border: '1px solid #2d3f5a', textAlign: 'center' }}>
-          <div style={{ fontSize: 18, marginBottom: 4 }}>🔮</div>
+          <div style={{ fontSize: 18, marginBottom: 4 }}>💎</div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#a78bfa' }}>{clapCount}</div>
-          <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>魔力ポーション</div>
+          <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>魔力の結晶</div>
         </div>
         <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px', border: '1px solid #2d3f5a', textAlign: 'center' }}>
           <div style={{ fontSize: 18, marginBottom: 4 }}>📅</div>
@@ -533,11 +533,11 @@ export default function ChallengePage() {
         )}
       </div>
 
-      {/* 魔力ポーション */}
+      {/* 魔力の結晶 */}
       <button onClick={handleClap} disabled={clapped}
         style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-        <span style={{ fontSize: 18 }}>🔮</span>
-        {clapped ? `魔力を送った！(${clapCount})` : `修行者に魔力を送る (${clapCount})`}
+        <span style={{ fontSize: 18 }}>💎</span>
+        {clapped ? `魔力で応援した！(${clapCount})` : `魔力で応援する (${clapCount})`}
       </button>
     </div>
   );
