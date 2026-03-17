@@ -207,8 +207,19 @@ export default function ChallengePage() {
     );
     if (others.length === 0) { setPosts([]); return; }
 
-    const ownerIds = others.map((d: any) => d.mini_challenges.owner_user_id);
-    const dayIds = others.map((d: any) => d.id);
+    // 同一ユーザーは最新週のみ残す（updated_at降順なので先に出てきた方が最新）
+    const seenUsers = new Set<string>();
+    const deduplicated = others.filter((d: any) => {
+      const uid = d.mini_challenges.owner_user_id;
+      if (seenUsers.has(uid)) return false;
+      seenUsers.add(uid);
+      return true;
+    });
+
+    // 最大5件
+    const selected = deduplicated.slice(0, 5);
+    const ownerIds = selected.map((d: any) => d.mini_challenges.owner_user_id);
+    const dayIds = selected.map((d: any) => d.id);
 
     const [{ data: profiles }, { data: checks }, { data: allChallenges }] = await Promise.all([
       supabase.from('user_profiles').select('user_id, nickname').in('user_id', ownerIds),
@@ -224,7 +235,7 @@ export default function ChallengePage() {
       challengeWeekMap[c.id] = userChallengeCount[c.owner_user_id];
     });
 
-    setPosts(others.map((d: any) => {
+    setPosts(selected.map((d: any) => {
       const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
       const dayChecks = (checks ?? []).filter((c: any) => c.target_day_id === d.id);
       const baseNickname = profile?.nickname ?? '匿名';
@@ -328,9 +339,6 @@ export default function ChallengePage() {
               🧙 {myNickname}
             </button>
           )}
-          <div style={{ background: 'rgba(52,211,153,0.1)', borderRadius: 100, padding: '5px 12px', border: '1px solid rgba(52,211,153,0.3)', fontSize: 11, color: '#34d399', fontWeight: 700 }}>
-            🔥 {doneCount}人修行中
-          </div>
         </div>
       </div>
 
