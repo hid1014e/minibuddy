@@ -210,14 +210,21 @@ export default function ChallengePage() {
     // 同一ユーザーは最新週のみ残す（updated_at降順なので先に出てきた方が最新）
     const seenUsers = new Set<string>();
     const deduplicated = others.filter((d: any) => {
-      const uid = d.mini_challenges.owner_user_id;
-      if (seenUsers.has(uid)) return false;
-      seenUsers.add(uid);
+      const ownerId = d.mini_challenges.owner_user_id;
+      if (seenUsers.has(ownerId)) return false;
+      seenUsers.add(ownerId);
       return true;
     });
 
-    // 最大5件
-    const selected = deduplicated.slice(0, 5);
+    // 自分の投稿と他人の投稿を分ける
+    const myPost = deduplicated.filter((d: any) => d.mini_challenges.owner_user_id === uid);
+    const otherPosts = deduplicated.filter((d: any) => d.mini_challenges.owner_user_id !== uid);
+
+    // 他人の投稿をランダムシャッフル
+    const shuffled = [...otherPosts].sort(() => Math.random() - 0.5);
+
+    // 自分の投稿を必ず含め、残り4件を他人からランダムで、合計最大5件
+    const selected = [...myPost, ...shuffled].slice(0, 5);
     const ownerIds = selected.map((d: any) => d.mini_challenges.owner_user_id);
     const dayIds = selected.map((d: any) => d.id);
 
