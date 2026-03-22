@@ -189,11 +189,11 @@ export default function ChallengePage() {
   const canAddToday = todayDayNum <= 7 && !todayFilled && !showForm;
 
   const loadPosts = useCallback(async (dayNum: number, uid: string) => {
-    // 同じDay番号の全投稿を取得（自分以外）
+    // activeなチャレンジを持つユーザーの全投稿を取得（Day番号問わず）
     const { data: allDays } = await supabase
       .from('mini_challenge_days')
-      .select('id, plan, status, day_number, image_url, mini_challenge_id, mini_challenges!inner(id, owner_user_id, theme)')
-      .eq('day_number', dayNum)
+      .select('id, plan, status, day_number, image_url, mini_challenge_id, mini_challenges!inner(id, owner_user_id, theme, status)')
+      .eq('mini_challenges.status', 'active')
       .order('updated_at', { ascending: false });
 
     if (!allDays || allDays.length === 0) { setPosts([]); return; }
@@ -202,7 +202,7 @@ export default function ChallengePage() {
     const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', uid);
     const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
 
-    const others = (allDays as any[]).filter(d =>
+    const others = (allDays as any[]).filter((d: any) =>
       !blockedIds.has(d.mini_challenges.owner_user_id)
     );
     if (others.length === 0) { setPosts([]); return; }
