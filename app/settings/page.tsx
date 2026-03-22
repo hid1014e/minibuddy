@@ -3,23 +3,30 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ensureAuth, getProfile, deleteMyAccount, getBlockList, unblockUser } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 type BlockedUser = { userId: string; nickname: string };
 
 export default function SettingsPage() {
   const router = useRouter();
   const [nickname, setNickname] = useState('');
+  const [editingNickname, setEditingNickname] = useState(false);
+  const [newNickname, setNewNickname] = useState('');
+  const [savingNickname, setSavingNickname] = useState(false);
+  const [nicknameError, setNicknameError] = useState('');
   const [blockList, setBlockList] = useState<BlockedUser[]>([]);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [unblocking, setUnblocking] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       const user = await ensureAuth();
       if (!user) return;
+      setUserId(user.id);
       const [profile, blocks] = await Promise.all([
         getProfile(user.id),
         getBlockList(),
@@ -31,10 +38,31 @@ export default function SettingsPage() {
     load();
   }, []);
 
-  async function handleUnblock(userId: string) {
-    setUnblocking(userId);
-    await unblockUser(userId);
-    setBlockList(prev => prev.filter(b => b.userId !== userId));
+  async function handleSaveNickname() {
+    if (!newNickname.trim()) { setNicknameError('名前を入力してください'); return; }
+    if (newNickname.length > 10) { setNicknameError('10文字以内で入力してください'); return; }
+    if (!userId) return;
+    setSavingNickname(true);
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ nickname: newNickname.trim() })
+      .eq('user_id', userId);
+    if (error) {
+      setNicknameError('保存に失敗しました');
+      setSavingNickname(false);
+      return;
+    }
+    setNickname(newNickname.trim());
+    setEditingNickname(false);
+    setNewNickname('');
+    setNicknameError('');
+    setSavingNickname(false);
+  }
+
+  async function handleUnblock(uid: string) {
+    setUnblocking(uid);
+    await unblockUser(uid);
+    setBlockList(prev => prev.filter(b => b.userId !== uid));
     setUnblocking(null);
   }
 
@@ -63,10 +91,50 @@ export default function SettingsPage() {
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 22, color: '#f0c040', textShadow: '0 0 15px rgba(240,192,64,0.4)' }}>設定</div>
       </div>
 
-      {/* アカウント情報 */}
+      {/* ニックネーム */}
       <div style={{ background: '#1e2d4a', borderRadius: 16, padding: '16px 18px', marginBottom: 14, border: '1px solid #2d3f5a', animation: 'fadeUp 0.3s ease' }}>
-        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 6, fontFamily: 'Nunito, sans-serif' }}>ニックネーム</div>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#f1f5f9' }}>{nickname}</div>
+        <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, marginBottom: 10, fontFamily: 'Nunito, sans-serif' }}>ニックネーム</div>
+        {!editingNickname ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#f1f5f9' }}>{nickname}</div>
+            <button
+              onClick={() => { setNewNickname(nickname); setEditingNickname(true); setNicknameError(''); }}
+              style={{ padding: '6px 16px', borderRadius: 100, border: '1px solid rgba(240,192,64,0.4)', background: 'rgba(240,192,64,0.08)', color: '#f0c040', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+            >
+              編集
+            </button>
+          </div>
+        ) : (
+          <div>
+            <input
+              value={newNickname}
+              onChange={e => { setNewNickname(e.target.value); setNicknameError(''); }}
+              onKeyDown={e => e.key === 'Enter' && handleSaveNickname()}
+              maxLength={10}
+              autoFocus
+              style={{ width: '100%', padding: '11px', borderRadius: 10, border: `1.5px solid ${nicknameError ? '#f87171' : '#f0c040'}`, background: '#0f1729', color: '#f1f5f9', fontSize: 15, fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 6, boxSizing: 'border-box' as const, outline: 'none' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontSize: 12, color: '#f87171', fontWeight: 700 }}>{nicknameError}</span>
+              <span style={{ fontSize: 12, color: '#94a3b8', fontWeight: 700 }}>{newNickname.length}/10</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <button
+                onClick={() => { setEditingNickname(false); setNicknameError(''); }}
+                style={{ padding: '10px', borderRadius: 10, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleSaveNickname}
+                disabled={!newNickname.trim() || savingNickname}
+                style={{ padding: '10px', borderRadius: 10, border: 'none', background: newNickname.trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: newNickname.trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: newNickname.trim() ? 'pointer' : 'not-allowed', boxShadow: newNickname.trim() ? '0 3px 0 #8a6000' : 'none' }}
+              >
+                {savingNickname ? '保存中...' : '保存する'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ブロックリスト */}
