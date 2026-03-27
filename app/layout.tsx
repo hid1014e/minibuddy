@@ -3,13 +3,39 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Hagrit',
-  description: '7日チャレンジ — 仲間の魔力を感じながらやり切ろう',
+  description: '7日チャレンジ',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ja">
       <body style={{ background: '#1a0a2e', minHeight: '100vh' }}>
+        <a
+          href="https://forms.gle/vnipBGp67zjsTj9W7"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            position: 'fixed',
+            top: '14px',
+            right: '14px',
+            zIndex: 9999,
+            background: 'linear-gradient(135deg, #2d1b4e, #1a0a2e)',
+            border: '1px solid rgba(124, 92, 191, 0.33)',
+            borderRadius: '20px',
+            padding: '6px 12px',
+            color: '#c9a84c',
+            fontSize: '12px',
+            fontFamily: 'Nunito, sans-serif',
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            boxShadow: '0 0 8px rgba(124, 92, 191, 0.2)',
+            opacity: 0.85,
+          }}
+        >
+          <span>ご意見</span>
+        </a>
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 16px 100px' }}>
           {children}
         </div>

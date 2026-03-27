@@ -43,7 +43,6 @@ type Comment = {
   created_at: string;
 };
 
-// ── コメント欄（完全独立・直接Supabase）──────────────────
 function CommentSection({ postId, myUserId }: { postId: string; myUserId: string }) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [input, setInput] = useState('');
@@ -63,7 +62,6 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  // 全コメントをフラットに表示（返信先を@で示す）
   const visible = showAll ? comments : comments.slice(0, PREVIEW);
   const hidden = comments.length - PREVIEW;
 
@@ -86,7 +84,6 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
     setShowAll(true);
   }
 
-  // 返信先のnicknameを取得
   const nicknameOf = (id: string) => comments.find(c => c.id === id)?.nickname ?? '';
 
   return (
@@ -96,7 +93,6 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
           まだコメントはありません
         </p>
       )}
-
       {visible.map(c => (
         <div key={c.id} style={{ marginBottom: 8, display: 'flex', alignItems: 'flex-start', gap: 6 }}>
           <div style={{ flex: 1 }}>
@@ -116,8 +112,6 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
           </button>
         </div>
       ))}
-
-      {/* 折りたたみ */}
       {!showAll && hidden > 0 && (
         <button onClick={() => setShowAll(true)} style={{ fontSize: 12, color: '#7dd3fc', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 8, display: 'block' }}>
           ▼ 他{hidden}件を見る
@@ -128,14 +122,12 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
           ▲ 折りたたむ
         </button>
       )}
-
       {replyTo && (
         <div style={{ fontSize: 11, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
           ↩ {replyTo.nickname} に返信中
           <button onClick={() => setReplyTo(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', fontSize: 12 }}>✕</button>
         </div>
       )}
-
       <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
         <input
           value={input}
@@ -157,7 +149,6 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
   );
 }
 
-// ── メインページ ──────────────────────────────────────
 export default function ChallengePage() {
   const router = useRouter();
   const params = useParams();
@@ -184,12 +175,15 @@ export default function ChallengePage() {
   const [saving, setSaving] = useState(false);
   const [editingDay, setEditingDay] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+  const [goalSaving, setGoalSaving] = useState(false);
+  const [showCrystalOverlay, setShowCrystalOverlay] = useState(false);
 
   const todayFilled = days.some(d => d.day_number === todayDayNum);
   const canAddToday = todayDayNum <= 7 && !todayFilled && !showForm;
 
   const loadPosts = useCallback(async (dayNum: number, uid: string) => {
-    // activeなチャレンジを持つユーザーの全投稿を取得（Day番号問わず）
     const { data: allDays } = await supabase
       .from('mini_challenge_days')
       .select('id, plan, status, day_number, image_url, mini_challenge_id, mini_challenges!inner(id, owner_user_id, theme, status)')
@@ -198,7 +192,6 @@ export default function ChallengePage() {
 
     if (!allDays || allDays.length === 0) { setPosts([]); return; }
 
-    // ブロック済み除外（自分の投稿は含める）
     const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', uid);
     const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
 
@@ -207,7 +200,6 @@ export default function ChallengePage() {
     );
     if (others.length === 0) { setPosts([]); return; }
 
-    // 同一ユーザーは最新週のみ残す（updated_at降順なので先に出てきた方が最新）
     const seenUsers = new Set<string>();
     const deduplicated = others.filter((d: any) => {
       const ownerId = d.mini_challenges.owner_user_id;
@@ -216,14 +208,9 @@ export default function ChallengePage() {
       return true;
     });
 
-    // 自分の投稿と他人の投稿を分ける
     const myPost = deduplicated.filter((d: any) => d.mini_challenges.owner_user_id === uid);
     const otherPosts = deduplicated.filter((d: any) => d.mini_challenges.owner_user_id !== uid);
-
-    // 他人の投稿をランダムシャッフル
     const shuffled = [...otherPosts].sort(() => Math.random() - 0.5);
-
-    // 自分の投稿を必ず含め、残り4件を他人からランダムで、合計最大5件
     const selected = [...myPost, ...shuffled].slice(0, 5);
     const ownerIds = selected.map((d: any) => d.mini_challenges.owner_user_id);
     const dayIds = selected.map((d: any) => d.id);
@@ -234,7 +221,6 @@ export default function ChallengePage() {
       supabase.from('mini_challenges').select('id, owner_user_id, started_at').in('owner_user_id', ownerIds).order('started_at', { ascending: true }),
     ]);
 
-    // 各チャレンジが何周目かを計算
     const challengeWeekMap: Record<string, number> = {};
     const userChallengeCount: Record<string, number> = {};
     (allChallenges ?? []).forEach((c: any) => {
@@ -311,6 +297,16 @@ export default function ChallengePage() {
     await load(); closeForm(); setSaving(false);
   }
 
+  async function handleGoalSave() {
+    const trimmed = goalInput.trim();
+    if (!trimmed) return;
+    setGoalSaving(true);
+    await supabase.from('mini_challenges').update({ goal: trimmed }).eq('id', challengeId);
+    setGoal(trimmed);
+    setGoalEditing(false);
+    setGoalSaving(false);
+  }
+
   async function handleClap() {
     if (clapped || !userId) return;
     setClapped(true); setClapCount(c => c + 1);
@@ -335,9 +331,11 @@ export default function ChallengePage() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
         @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
         @keyframes shimmer { 0%,100% { box-shadow:0 0 8px rgba(240,192,64,0.2); } 50% { box-shadow:0 0 20px rgba(240,192,64,0.5); } }
+        @keyframes overlayIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes floatUp { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+        @keyframes sparkle { 0%,100% { opacity:0.4; transform:scale(1); } 50% { opacity:1; transform:scale(1.3); } }
       `}</style>
 
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 24, color: '#f0c040', textShadow: '0 0 15px rgba(240,192,64,0.4)' }}>Hagrit</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -349,32 +347,56 @@ export default function ChallengePage() {
         </div>
       </div>
 
-      {/* 称号 */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ display: 'inline-block', background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.3)', borderRadius: 100, padding: '5px 14px', fontSize: 11, color: '#f0c040', fontWeight: 700, animation: 'shimmer 3s ease-in-out infinite' }}>
           {titleData.emoji} {titleData.title}
         </div>
       </div>
 
-      {/* 目標カード */}
-      {goal && (
+      {goal !== null && (
         <div style={{ background: '#1e2d4a', borderRadius: 16, padding: '14px 16px', marginBottom: 14, border: '1px solid #2d3f5a' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             {themeData && <span style={{ color: themeData.color, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 100, border: `1px solid ${themeData.color}`, background: `${themeData.color}18` }}>{themeData.icon} {theme}</span>}
             <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>7日間の目標</span>
+            {!goalEditing && (
+              <button
+                onClick={() => { setGoalEditing(true); setGoalInput(goal ?? ''); }}
+                style={{ marginLeft: 'auto', fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '2px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}
+              >編集</button>
+            )}
           </div>
-          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 15, color: '#f1f5f9', lineHeight: 1.5 }}>{goal}</div>
+          {goalEditing ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <textarea
+                value={goalInput}
+                onChange={e => setGoalInput(e.target.value)}
+                rows={3}
+                style={{ width: '100%', padding: '10px', borderRadius: 10, border: '1px solid rgba(240,192,64,0.4)', background: '#0f1729', color: '#f1f5f9', fontSize: 14, fontFamily: 'Nunito, sans-serif', resize: 'none', boxSizing: 'border-box' as const, outline: 'none' }}
+              />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setGoalEditing(false)}
+                  style={{ flex: 1, padding: '8px', borderRadius: 10, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
+                >キャンセル</button>
+                <button
+                  onClick={handleGoalSave}
+                  disabled={!goalInput.trim() || goalSaving}
+                  style={{ flex: 1, padding: '8px', borderRadius: 10, border: 'none', background: (!goalInput.trim() || goalSaving) ? '#2d3f5a' : 'linear-gradient(135deg,#f0c040,#c49a20)', color: (!goalInput.trim() || goalSaving) ? '#94a3b8' : '#0f1729', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: (!goalInput.trim() || goalSaving) ? 'not-allowed' : 'pointer' }}
+                >{goalSaving ? '保存中...' : '✦ 保存'}</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ fontFamily: 'Cinzel, serif', fontSize: 15, color: '#f1f5f9', lineHeight: 1.5 }}>{goal}</div>
+          )}
         </div>
       )}
 
-      {/* 応援バナー */}
       {cheerCount > 0 && (
         <div style={{ background: 'rgba(240,192,64,0.07)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 12, padding: '10px 14px', marginBottom: 14, textAlign: 'center' }}>
           <span style={{ fontSize: 13, color: '#f0c040', fontWeight: 800 }}>✦ 今日{cheerCount}人に応援されました！</span>
         </div>
       )}
 
-      {/* Progress */}
       <div style={{ background: '#1e2d4a', borderRadius: 20, padding: 18, marginBottom: 14, border: '1px solid #2d3f5a' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8' }}>修行の記録</div>
@@ -398,9 +420,8 @@ export default function ChallengePage() {
         </div>
       </div>
 
-      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
-        <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px', border: '1px solid #2d3f5a', textAlign: 'center' }}>
+        <div onClick={() => setShowCrystalOverlay(true)} style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px', border: '1px solid #2d3f5a', textAlign: 'center', cursor: 'pointer' }}>
           <div style={{ fontSize: 18, marginBottom: 4 }}>💎</div>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 18, color: '#a78bfa' }}>{clapCount}</div>
           <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>魔力の結晶</div>
@@ -412,7 +433,6 @@ export default function ChallengePage() {
         </div>
       </div>
 
-      {/* 記録ボタン */}
       {canAddToday && (
         <button onClick={openNewForm} style={{ width: '100%', padding: '15px', borderRadius: 14, border: 'none', background: 'linear-gradient(135deg, #f0c040, #c49a20)', color: '#0f1729', fontFamily: 'Cinzel, serif', fontSize: 15, fontWeight: 700, cursor: 'pointer', boxShadow: '0 5px 0 #8a6000', marginBottom: 14 }}>
           ✦ Day {todayDayNum} を記録する
@@ -424,7 +444,6 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 記録フォーム */}
       {showForm && (
         <div style={{ background: '#1e2d4a', borderRadius: 20, padding: 20, marginBottom: 14, border: '1px solid rgba(240,192,64,0.3)', animation: 'fadeUp 0.3s ease' }}>
           <div style={{ fontFamily: 'Cinzel, serif', fontSize: 14, color: '#f0c040', marginBottom: 16 }}>
@@ -472,7 +491,6 @@ export default function ChallengePage() {
         </div>
       )}
 
-      {/* 修行ログ */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>修行ログ 📜</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -502,7 +520,6 @@ export default function ChallengePage() {
         </div>
       </div>
 
-      {/* 仲間の気配 */}
       <div style={{ marginBottom: 14 }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>仲間の気配 🌙</div>
         {posts.length === 0 ? (
@@ -548,12 +565,33 @@ export default function ChallengePage() {
         )}
       </div>
 
-      {/* 魔力の結晶 */}
       <button onClick={handleClap} disabled={clapped}
         style={{ width: '100%', padding: '15px', borderRadius: 14, border: `1px solid ${clapped ? 'rgba(52,211,153,0.3)' : 'rgba(167,139,250,0.4)'}`, background: clapped ? 'rgba(52,211,153,0.07)' : 'rgba(167,139,250,0.08)', color: clapped ? '#34d399' : '#a78bfa', fontFamily: 'Cinzel, serif', fontSize: 14, cursor: clapped ? 'default' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
         <span style={{ fontSize: 18 }}>💎</span>
         {clapped ? `魔力で応援した！(${clapCount})` : `魔力で応援する (${clapCount})`}
       </button>
+      {showCrystalOverlay && (
+        <div
+          onClick={() => setShowCrystalOverlay(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(4,8,20,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', animation: 'overlayIn 0.3s ease', padding: 32 }}
+        >
+          <div style={{ animation: 'floatUp 3s ease-in-out infinite', marginBottom: 24, position: 'relative' }}>
+            <div style={{ fontSize: 72, lineHeight: 1 }}>💎</div>
+            <div style={{ position: 'absolute', top: -8, right: -12, fontSize: 18, animation: 'sparkle 1.5s ease-in-out infinite' }}>✦</div>
+            <div style={{ position: 'absolute', bottom: -4, left: -14, fontSize: 14, animation: 'sparkle 2s ease-in-out infinite 0.5s' }}>✧</div>
+            <div style={{ position: 'absolute', top: 4, left: -16, fontSize: 12, animation: 'sparkle 1.8s ease-in-out infinite 1s' }}>✦</div>
+          </div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 11, color: '#a78bfa', letterSpacing: 4, marginBottom: 12, textTransform: 'uppercase' }}>Coming Soon</div>
+          <div style={{ fontFamily: 'Cinzel, serif', fontSize: 22, color: '#f0c040', textAlign: 'center', lineHeight: 1.5, marginBottom: 12, textShadow: '0 0 20px rgba(240,192,64,0.5)' }}>
+            魔力の結晶が<br />動き出す日が近い
+          </div>
+          <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 13, color: '#94a3b8', textAlign: 'center', lineHeight: 1.8, marginBottom: 32 }}>
+            仲間と力を合わせて使う<br />大いなる魔法が準備中です。<br />今はその力をためておこう。
+          </div>
+          <div style={{ width: 48, height: 2, background: 'linear-gradient(90deg,transparent,#a78bfa,transparent)', marginBottom: 24 }} />
+          <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: '#4a5568', fontWeight: 700 }}>タップで閉じる</div>
+        </div>
+      )}
     </div>
   );
 }

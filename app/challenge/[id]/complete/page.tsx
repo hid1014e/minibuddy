@@ -33,6 +33,17 @@ export default function CompletePage() {
     ? { emoji: '⚗️', color: '#34d399', border: 'rgba(52,211,153,0.3)', bg: 'rgba(52,211,153,0.07)', message: `${doneCount}/7日達成。\n次はもっとやれる！` }
     : { emoji: '🌱', color: '#94a3b8', border: 'rgba(148,163,184,0.3)', bg: 'rgba(148,163,184,0.05)', message: `${doneCount}/7日。\nまず始めたことが大事！` };
 
+  // リアプレイ猿のセリフ
+  const monkeyLines = doneCount === 7
+    ? ['ウキキ！完璧じゃないか！\nその調子で次の修行も頼むぞ！', '全部やりきったな！\n島中に知れ渡るぞ、この快挙！']
+    : doneCount >= 5
+    ? ['ウキ…惜しかったな。\nでも十分すごいぞ！', 'もう少しだったな！\n次は全部やりきれ！']
+    : doneCount >= 3
+    ? ['ウキキ…まあまあだな。\n続けることが大事じゃ！', '半分はやれたじゃないか！\n次はもっとやれるぞ！']
+    : ['ウキ…始めたことは偉い。\nでも次はもっと頑張れよ！', 'まずは一歩じゃ！\n諦めなければ道は開ける！'];
+
+  const monkeyLine = monkeyLines[Math.floor(Math.random() * monkeyLines.length)];
+
   const retryLabel = doneCount === 7 ? '✦ 次の修行へ' : doneCount >= 5 ? '✦ もう一度挑戦する' : '✦ もう一度チャレンジする';
   const shareText = `#Hagrit 7日修行完了！\n${doneCount}/7 達成 🔮`;
 
@@ -54,6 +65,7 @@ export default function CompletePage() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
         @keyframes float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-10px); } }
         @keyframes shimmer { 0%,100% { box-shadow:0 0 10px rgba(240,192,64,0.2); } 50% { box-shadow:0 0 25px rgba(240,192,64,0.5); } }
+        @keyframes monkeyBounce { 0%,100% { transform:translateY(0) rotate(-3deg); } 50% { transform:translateY(-6px) rotate(3deg); } }
       `}</style>
 
       <div style={{ textAlign: 'center', marginBottom: 20, animation: 'fadeUp 0.3s ease' }}>
@@ -79,6 +91,15 @@ export default function CompletePage() {
           {Array.from({ length: 7 }, (_, i) => (
             <span key={i} style={{ fontSize: 18, opacity: i < doneCount ? 1 : 0.15, color: '#f0c040' }}>✦</span>
           ))}
+        </div>
+      </div>
+
+      {/* リアプレイ猿 */}
+      <div style={{ background: '#1e2d4a', border: '1px solid #2d3f5a', borderRadius: 16, padding: '16px 18px', marginBottom: 16, animation: 'fadeUp 0.45s ease', display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+        <div style={{ fontSize: 36, animation: 'monkeyBounce 2s ease-in-out infinite', flexShrink: 0 }}>🐒</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginBottom: 4, letterSpacing: '0.05em' }}>リアプレイ猿</div>
+          <div style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', fontWeight: 700, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{monkeyLine}</div>
         </div>
       </div>
 
