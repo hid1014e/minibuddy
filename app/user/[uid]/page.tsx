@@ -45,6 +45,11 @@ export default function UserProfilePage() {
   const [openHistoryCommentId, setOpenHistoryCommentId] = useState<string | null>(null);
   const [commentsMap, setCommentsMap] = useState<Record<string, ChallengeComment[]>>({});
   const [loadingComments, setLoadingComments] = useState<string | null>(null);
+  const [replyInputs, setReplyInputs] = useState<Record<string, string>>({});
+  const [replyTargets, setReplyTargets] = useState<Record<string, { id: string; nickname: string } | null>>({});
+  const [sendingReply, setSendingReply] = useState<string | null>(null);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+  const [myNickname, setMyNickname] = useState<string>('');
 
   useEffect(() => {
     async function load() {
@@ -60,6 +65,11 @@ export default function UserProfilePage() {
       setStreakWeeks(weeks);
       setBlocked(blockedStatus);
       setIsSelf(me?.id === uid);
+      setMyUserId(me?.id ?? null);
+      if (me?.id) {
+        const { data: myProf } = await supabase.from('user_profiles').select('nickname').eq('user_id', me.id).maybeSingle();
+        setMyNickname(myProf?.nickname ?? '匿名');
+      }
       setLoading(false);
     }
     load();
@@ -101,6 +111,42 @@ export default function UserProfilePage() {
     setCommentsMap(prev => ({ ...prev, [challengeId]: enriched }));
     setOpenHistoryCommentId(challengeId);
     setLoadingComments(null);
+  }
+
+  async function sendHistoryReply(challengeId: string, dayId: string) {
+    const body = (replyInputs[dayId] ?? '').trim();
+    if (!body || !myUserId) return;
+    setSendingReply(dayId);
+    const replyTo = replyTargets[dayId]?.id ?? null;
+    await supabase.from('post_comments').insert({
+      day_id: dayId,
+      user_id: myUserId,
+      nickname: myNickname,
+      body,
+      reply_to: replyTo,
+    });
+    // コメント再取得
+    const { data: days } = await supabase
+      .from('mini_challenge_days')
+      .select('id, day_number')
+      .eq('mini_challenge_id', challengeId)
+      .order('day_number', { ascending: true });
+    const dayIds = (days ?? []).map((d: any) => d.id);
+    const dayNumberMap: Record<string, number> = {};
+    (days ?? []).forEach((d: any) => { dayNumberMap[d.id] = d.day_number; });
+    const { data: comments } = await supabase
+      .from('post_comments')
+      .select('id, user_id, nickname, body, reply_to, created_at, day_id')
+      .in('day_id', dayIds)
+      .order('created_at', { ascending: true });
+    const enriched: ChallengeComment[] = (comments ?? []).map((c: any) => ({
+      ...c,
+      day_number: dayNumberMap[c.day_id] ?? 0,
+    }));
+    setCommentsMap(prev => ({ ...prev, [challengeId]: enriched }));
+    setReplyInputs(prev => ({ ...prev, [dayId]: '' }));
+    setReplyTargets(prev => ({ ...prev, [dayId]: null }));
+    setSendingReply(null);
   }
 
   async function handleBlock() {
@@ -243,10 +289,55 @@ export default function UserProfilePage() {
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <span style={{ fontSize: 10, color: '#4a5568', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {cm.day_number}</span>
                                 <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{cm.nickname}</span>
+                                {myUserId && (
+                                  <button
+                                    onClick={() => setReplyTargets(prev => ({ ...prev, [cm.day_id]: prev[cm.day_id]?.id === cm.id ? null : { id: cm.id, nickname: cm.nickname } }))}
+                                    style={{ fontSize: 10, color: replyTargets[cm.day_id]?.id === cm.id ? '#7dd3fc' : '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700, marginLeft: 'auto' }}
+                                  >{replyTargets[cm.day_id]?.id === cm.id ? '✕' : '返信'}</button>
+                                )}
                               </div>
+                              {cm.reply_to && (
+                                <span style={{ fontSize: 11, color: '#7dd3fc', fontFamily: 'Nunito, sans-serif', marginLeft: 8 }}>
+                                  @{commentsMap[c.id].find(x => x.id === cm.reply_to)?.nickname ?? ''}
+                                </span>
+                              )}
                               <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', lineHeight: 1.4 }}>{cm.body}</span>
+                              {myUserId && replyTargets[cm.day_id]?.id === cm.id && (
+                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                  <input
+                                    value={replyInputs[cm.day_id] ?? ''}
+                                    onChange={e => setReplyInputs(prev => ({ ...prev, [cm.day_id]: e.target.value }))}
+                                    onKeyDown={e => e.key === 'Enter' && sendHistoryReply(c.id, cm.day_id)}
+                                    placeholder={`${cm.nickname}へ返信...`}
+                                    maxLength={50}
+                                    style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 12, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+                                  />
+                                  <button
+                                    onClick={() => sendHistoryReply(c.id, cm.day_id)}
+                                    disabled={!(replyInputs[cm.day_id] ?? '').trim() || sendingReply === cm.day_id}
+                                    style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: (replyInputs[cm.day_id] ?? '').trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: (replyInputs[cm.day_id] ?? '').trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                                  >{sendingReply === cm.day_id ? '...' : '送信'}</button>
+                                </div>
+                              )}
                             </div>
                           ))}
+                        </div>
+                      )}
+                      {myUserId && (
+                        <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                          <input
+                            value={replyInputs[`new_${c.id}`] ?? ''}
+                            onChange={e => setReplyInputs(prev => ({ ...prev, [`new_${c.id}`]: e.target.value }))}
+                            onKeyDown={e => { if (e.key === 'Enter') { const dayId = commentsMap[c.id][commentsMap[c.id].length - 1]?.day_id; if (dayId) sendHistoryReply(c.id, dayId); } }}
+                            placeholder="新しいコメント..."
+                            maxLength={50}
+                            style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: '1px solid #2d3f5a', background: '#0f1729', color: '#f1f5f9', fontSize: 12, fontFamily: 'Nunito, sans-serif', outline: 'none' }}
+                          />
+                          <button
+                            onClick={() => { const dayId = commentsMap[c.id][commentsMap[c.id].length - 1]?.day_id; if (dayId) { setReplyInputs(prev => ({ ...prev, [dayId]: prev[`new_${c.id}`] ?? '' })); sendHistoryReply(c.id, dayId); setReplyInputs(prev => ({ ...prev, [`new_${c.id}`]: '' })); } }}
+                            disabled={!(replyInputs[`new_${c.id}`] ?? '').trim()}
+                            style={{ padding: '7px 12px', borderRadius: 8, border: 'none', background: (replyInputs[`new_${c.id}`] ?? '').trim() ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#2d3f5a', color: (replyInputs[`new_${c.id}`] ?? '').trim() ? '#0f1729' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                          >送信</button>
                         </div>
                       )}
                     </div>

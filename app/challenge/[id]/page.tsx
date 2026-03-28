@@ -34,6 +34,7 @@ type Post = {
   already_checked: boolean;
   goal: string | null;
   streak_weeks: number;
+  has_new_comment: boolean;
 };
 
 type Comment = {
@@ -238,6 +239,17 @@ export default function ChallengePage() {
     const ownerIds = sorted.map((d: any) => d.mini_challenges.owner_user_id);
     const dayIds = sorted.map((d: any) => d.id);
 
+    // 自分のdayへの未読コメント取得（自分以外が書いたもの）
+    const { data: myDays } = await supabase
+      .from('mini_challenge_days')
+      .select('id')
+      .eq('mini_challenge_id', challengeId);
+    const myDayIds = (myDays ?? []).map((d: any) => d.id);
+    const { data: incomingComments } = myDayIds.length > 0
+      ? await supabase.from('post_comments').select('day_id').in('day_id', myDayIds).neq('user_id', uid)
+      : { data: [] };
+    const dayIdsWithNewComment = new Set((incomingComments ?? []).map((c: any) => c.day_id));
+
     const [{ data: profiles }, { data: checks }, { data: allChallenges }] = await Promise.all([
       supabase.from('user_profiles').select('user_id, nickname').in('user_id', ownerIds),
       supabase.from('day_checks').select('target_day_id, checker_id').in('target_day_id', dayIds),
@@ -274,6 +286,7 @@ export default function ChallengePage() {
         already_checked: dayChecks.some((c: any) => c.checker_id === uid),
         goal: userGoalMap[d.mini_challenges.owner_user_id] ?? null,
         streak_weeks: userStreakMap[d.mini_challenges.owner_user_id] ?? 0,
+        has_new_comment: d.mini_challenges.owner_user_id === uid && dayIdsWithNewComment.has(d.id),
       };
     }));
   }, []);
@@ -579,11 +592,16 @@ export default function ChallengePage() {
                   <img src={post.image_url} alt="" style={{ width: '100%', borderRadius: 10, maxHeight: 180, objectFit: 'cover', marginBottom: 10, display: 'block' }} />
                 )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button
-                    onClick={() => setOpenCommentId(openCommentId === post.id ? null : post.id)}
-                    style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
-                    💬 コメント
-                  </button>
+                  <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <button
+                      onClick={() => setOpenCommentId(openCommentId === post.id ? null : post.id)}
+                      style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
+                      💬 コメント
+                    </button>
+                    {post.has_new_comment && (
+                      <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, borderRadius: '50%', background: '#f87171', border: '1.5px solid #0f1729', display: 'block' }} />
+                    )}
+                  </div>
                   <button onClick={() => !post.already_checked && handleCheck(post.id, idx)}
                     style={{ padding: '5px 14px', borderRadius: 100, border: `1px solid ${post.already_checked ? 'rgba(52,211,153,0.4)' : 'rgba(167,139,250,0.4)'}`, background: post.already_checked ? 'rgba(52,211,153,0.08)' : 'rgba(167,139,250,0.08)', color: post.already_checked ? '#34d399' : '#a78bfa', fontSize: 12, fontFamily: 'Nunito, sans-serif', fontWeight: 800, cursor: post.already_checked ? 'default' : 'pointer' }}>
                     {post.already_checked ? `✦ 応援した (${post.check_count})` : `✧ 応援する (${post.check_count})`}
