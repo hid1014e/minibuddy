@@ -594,12 +594,18 @@ export default function ChallengePage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     <button
-                      onClick={() => setOpenCommentId(openCommentId === post.id ? null : post.id)}
+                      onClick={() => {
+                        const opening = openCommentId !== post.id;
+                        setOpenCommentId(opening ? post.id : null);
+                        if (opening && post.has_new_comment) {
+                          setPosts(prev => prev.map(p => p.id === post.id ? { ...p, has_new_comment: false } : p));
+                        }
+                      }}
                       style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
                       💬 コメント
                     </button>
                     {post.has_new_comment && (
-                      <span style={{ position: 'absolute', top: -3, right: -3, width: 8, height: 8, borderRadius: '50%', background: '#f87171', border: '1.5px solid #0f1729', display: 'block' }} />
+                      <span style={{ position: 'absolute', top: 0, right: 0, width: 7, height: 7, borderRadius: '50%', background: '#f87171', border: '1.5px solid #0f1729', display: 'block', transform: 'translate(30%, -30%)' }} />
                     )}
                   </div>
                   <button onClick={() => !post.already_checked && handleCheck(post.id, idx)}
