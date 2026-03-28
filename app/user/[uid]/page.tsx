@@ -6,6 +6,17 @@ import {
   getUserProfile, getUserChallengeHistory, getUserStreakWeeks,
   getTitle, blockUser, unblockUser, isBlocked, ensureAuth,
 } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
+
+type ChallengeComment = {
+  id: string;
+  user_id: string;
+  nickname: string;
+  body: string;
+  reply_to: string | null;
+  created_at: string;
+  day_number: number;
+};
 
 const THEMES: Record<string, { icon: string; color: string }> = {
   '健康': { icon: '💊', color: '#34d399' },
@@ -31,6 +42,9 @@ export default function UserProfilePage() {
   const [blockLoading, setBlockLoading] = useState(false);
   const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [isSelf, setIsSelf] = useState(false);
+  const [openHistoryCommentId, setOpenHistoryCommentId] = useState<string | null>(null);
+  const [commentsMap, setCommentsMap] = useState<Record<string, ChallengeComment[]>>({});
+  const [loadingComments, setLoadingComments] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -50,6 +64,44 @@ export default function UserProfilePage() {
     }
     load();
   }, [uid]);
+
+  async function loadChallengeComments(challengeId: string) {
+    if (commentsMap[challengeId]) {
+      // トグル
+      setOpenHistoryCommentId(openHistoryCommentId === challengeId ? null : challengeId);
+      return;
+    }
+    setLoadingComments(challengeId);
+    // そのチャレンジの全day_idを取得
+    const { data: days } = await supabase
+      .from('mini_challenge_days')
+      .select('id, day_number')
+      .eq('mini_challenge_id', challengeId)
+      .order('day_number', { ascending: true });
+    if (!days || days.length === 0) {
+      setCommentsMap(prev => ({ ...prev, [challengeId]: [] }));
+      setOpenHistoryCommentId(challengeId);
+      setLoadingComments(null);
+      return;
+    }
+    const dayIds = days.map((d: any) => d.id);
+    const dayNumberMap: Record<string, number> = {};
+    days.forEach((d: any) => { dayNumberMap[d.id] = d.day_number; });
+
+    const { data: comments } = await supabase
+      .from('post_comments')
+      .select('id, user_id, nickname, body, reply_to, created_at, day_id')
+      .in('day_id', dayIds)
+      .order('created_at', { ascending: true });
+
+    const enriched: ChallengeComment[] = (comments ?? []).map((c: any) => ({
+      ...c,
+      day_number: dayNumberMap[c.day_id] ?? 0,
+    }));
+    setCommentsMap(prev => ({ ...prev, [challengeId]: enriched }));
+    setOpenHistoryCommentId(challengeId);
+    setLoadingComments(null);
+  }
 
   async function handleBlock() {
     setBlockLoading(true);
@@ -173,6 +225,32 @@ export default function UserProfilePage() {
                     </div>
                     <div style={{ fontFamily: 'Cinzel, serif', fontSize: 12, color: c.done === 7 ? '#f0c040' : '#a78bfa', flexShrink: 0 }}>{c.done}<span style={{ fontSize: 10, color: '#94a3b8' }}>/7</span></div>
                   </div>
+                  {/* コメント履歴 */}
+                  <button
+                    onClick={() => loadChallengeComments(c.id)}
+                    style={{ marginTop: 10, width: '100%', padding: '7px', borderRadius: 10, border: '1px solid #2d3f5a', background: openHistoryCommentId === c.id ? 'rgba(125,211,252,0.08)' : 'transparent', color: openHistoryCommentId === c.id ? '#7dd3fc' : '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+                  >
+                    {loadingComments === c.id ? '読み込み中...' : openHistoryCommentId === c.id ? '▲ コメントを閉じる' : '💬 コメントを見る'}
+                  </button>
+                  {openHistoryCommentId === c.id && commentsMap[c.id] !== undefined && (
+                    <div style={{ marginTop: 10, borderTop: '1px solid #2d3f5a', paddingTop: 10 }}>
+                      {commentsMap[c.id].length === 0 ? (
+                        <p style={{ fontSize: 12, color: '#94a3b8', fontFamily: 'Nunito, sans-serif', margin: 0 }}>コメントはありません</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {commentsMap[c.id].map(cm => (
+                            <div key={cm.id} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 10, color: '#4a5568', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {cm.day_number}</span>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif' }}>{cm.nickname}</span>
+                              </div>
+                              <span style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', lineHeight: 1.4 }}>{cm.body}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
