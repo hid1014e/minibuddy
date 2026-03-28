@@ -286,7 +286,14 @@ export default function ChallengePage() {
         already_checked: dayChecks.some((c: any) => c.checker_id === uid),
         goal: userGoalMap[d.mini_challenges.owner_user_id] ?? null,
         streak_weeks: userStreakMap[d.mini_challenges.owner_user_id] ?? 0,
-        has_new_comment: d.mini_challenges.owner_user_id === uid && dayIdsWithNewComment.has(d.id) && !JSON.parse(localStorage.getItem('read_comment_days') || '[]').includes(d.id),
+        has_new_comment: (() => {
+          if (d.mini_challenges.owner_user_id !== uid) return false;
+          if (!dayIdsWithNewComment.has(d.id)) return false;
+          const readCounts: Record<string, number> = JSON.parse(localStorage.getItem('read_comment_counts') || '{}');
+          const lastReadCount = readCounts[d.id] ?? 0;
+          const currentCount = (incomingComments ?? []).filter((c: any) => c.day_id === d.id).length;
+          return currentCount > lastReadCount;
+        })(),
       };
     }));
   }, []);
@@ -599,10 +606,12 @@ export default function ChallengePage() {
                         setOpenCommentId(opening ? post.id : null);
                         if (opening && post.has_new_comment) {
                           setPosts(prev => prev.map(p => p.id === post.id ? { ...p, has_new_comment: false } : p));
-                          const readDays: string[] = JSON.parse(localStorage.getItem('read_comment_days') || '[]');
-                          if (!readDays.includes(post.id)) {
-                            localStorage.setItem('read_comment_days', JSON.stringify([...readDays, post.id]));
-                          }
+                          // 現在のコメント数をDBから取得して保存
+                          supabase.from('post_comments').select('id', { count: 'exact' }).eq('day_id', post.id).neq('user_id', userId ?? '').then(({ count }) => {
+                            const readCounts: Record<string, number> = JSON.parse(localStorage.getItem('read_comment_counts') || '{}');
+                            readCounts[post.id] = count ?? 0;
+                            localStorage.setItem('read_comment_counts', JSON.stringify(readCounts));
+                          });
                         }
                       }}
                       style={{ padding: '5px 12px', borderRadius: 100, border: '1px solid #2d3f5a', background: openCommentId === post.id ? 'rgba(125,211,252,0.1)' : 'transparent', color: openCommentId === post.id ? '#7dd3fc' : '#94a3b8', fontSize: 11, fontFamily: 'Nunito, sans-serif', fontWeight: 700, cursor: 'pointer' }}>
