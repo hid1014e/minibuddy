@@ -16,6 +16,7 @@ type ChallengeComment = {
   reply_to: string | null;
   created_at: string;
   day_number: number;
+  day_id: string;
 };
 
 const THEMES: Record<string, { icon: string; color: string }> = {
