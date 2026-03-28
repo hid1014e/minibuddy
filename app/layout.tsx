@@ -16,8 +16,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="noopener noreferrer"
           style={{
             position: 'fixed',
-            top: '14px',
-            right: '14px',
+            bottom: '24px',
+            right: '16px',
             zIndex: 9999,
             background: 'linear-gradient(135deg, #2d1b4e, #1a0a2e)',
             border: '1px solid rgba(124, 92, 191, 0.33)',

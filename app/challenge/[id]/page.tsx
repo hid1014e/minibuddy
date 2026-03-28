@@ -32,6 +32,8 @@ type Post = {
   theme: string | null;
   check_count: number;
   already_checked: boolean;
+  goal: string | null;
+  streak_weeks: number;
 };
 
 type Comment = {
@@ -160,6 +162,7 @@ export default function ChallengePage() {
   const [clapped, setClapped] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [postsLimit, setPostsLimit] = useState(5);
   const [cheerCount, setCheerCount] = useState(0);
   const [goal, setGoal] = useState<string | null>(null);
   const [theme, setChallengeTheme] = useState<string | null>(null);
@@ -208,27 +211,51 @@ export default function ChallengePage() {
       return true;
     });
 
+    // 直近7日以内にコメントしたことがある相手のuser_idを取得
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: myComments } = await supabase
+      .from('post_comments')
+      .select('day_id')
+      .eq('user_id', uid)
+      .gte('created_at', sevenDaysAgo);
+    const commentedDayIds = new Set((myComments ?? []).map((c: any) => c.day_id));
+
+    // コメントした投稿のowner_user_idを特定
+    const commentedUserIds = new Set<string>();
+    deduplicated.forEach((d: any) => {
+      if (commentedDayIds.has(d.id)) commentedUserIds.add(d.mini_challenges.owner_user_id);
+    });
+
     const myPost = deduplicated.filter((d: any) => d.mini_challenges.owner_user_id === uid);
-    const otherPosts = deduplicated.filter((d: any) => d.mini_challenges.owner_user_id !== uid);
-    const shuffled = [...otherPosts].sort(() => Math.random() - 0.5);
-    const selected = [...myPost, ...shuffled].slice(0, 5);
-    const ownerIds = selected.map((d: any) => d.mini_challenges.owner_user_id);
-    const dayIds = selected.map((d: any) => d.id);
+    const commentedPosts = deduplicated.filter((d: any) =>
+      d.mini_challenges.owner_user_id !== uid && commentedUserIds.has(d.mini_challenges.owner_user_id)
+    );
+    const otherPosts = deduplicated.filter((d: any) =>
+      d.mini_challenges.owner_user_id !== uid && !commentedUserIds.has(d.mini_challenges.owner_user_id)
+    );
+    // otherPostsはupdated_at新しい順（DB取得時点でORDER BY updated_at DESCなので順序維持）
+    const sorted = [...myPost, ...commentedPosts, ...otherPosts];
+    const ownerIds = sorted.map((d: any) => d.mini_challenges.owner_user_id);
+    const dayIds = sorted.map((d: any) => d.id);
 
     const [{ data: profiles }, { data: checks }, { data: allChallenges }] = await Promise.all([
       supabase.from('user_profiles').select('user_id, nickname').in('user_id', ownerIds),
       supabase.from('day_checks').select('target_day_id, checker_id').in('target_day_id', dayIds),
-      supabase.from('mini_challenges').select('id, owner_user_id, started_at').in('owner_user_id', ownerIds).order('started_at', { ascending: true }),
+      supabase.from('mini_challenges').select('id, owner_user_id, started_at, goal').in('owner_user_id', ownerIds).order('started_at', { ascending: true }),
     ]);
 
     const challengeWeekMap: Record<string, number> = {};
     const userChallengeCount: Record<string, number> = {};
+    const userGoalMap: Record<string, string | null> = {};
+    const userStreakMap: Record<string, number> = {};
     (allChallenges ?? []).forEach((c: any) => {
       userChallengeCount[c.owner_user_id] = (userChallengeCount[c.owner_user_id] ?? 0) + 1;
       challengeWeekMap[c.id] = userChallengeCount[c.owner_user_id];
+      userGoalMap[c.owner_user_id] = c.goal ?? null;
+      userStreakMap[c.owner_user_id] = userChallengeCount[c.owner_user_id] - 1;
     });
 
-    setPosts(selected.map((d: any) => {
+    setPosts(sorted.map((d: any) => {
       const profile = (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id);
       const dayChecks = (checks ?? []).filter((c: any) => c.target_day_id === d.id);
       const baseNickname = profile?.nickname ?? '匿名';
@@ -245,6 +272,8 @@ export default function ChallengePage() {
         theme: d.mini_challenges.theme ?? null,
         check_count: dayChecks.length,
         already_checked: dayChecks.some((c: any) => c.checker_id === uid),
+        goal: userGoalMap[d.mini_challenges.owner_user_id] ?? null,
+        streak_weeks: userStreakMap[d.mini_challenges.owner_user_id] ?? 0,
       };
     }));
   }, []);
@@ -528,18 +557,22 @@ export default function ChallengePage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {posts.map((post, idx) => (
+            {posts.slice(0, postsLimit).map((post, idx) => (
               <div key={post.id} style={{ background: '#1e2d4a', borderRadius: 14, padding: '12px 14px', border: '1px solid #2d3f5a' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                   <span onClick={() => router.push(`/user/${post.owner_user_id}`)} style={{ fontSize: 13, fontWeight: 800, color: '#a78bfa', fontFamily: 'Nunito, sans-serif', cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: 3 }}>
                     {post.nickname}
                   </span>
+                  {(() => { const t = getTitle(post.streak_weeks); return <span style={{ fontSize: 10, color: '#94a3b8', background: 'rgba(255,255,255,0.05)', borderRadius: 100, padding: '1px 8px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, whiteSpace: 'nowrap' }}>{t.emoji} {t.title}</span>; })()}
+                  <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 'auto', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {post.day_number}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                   {post.theme && (
-                    <span style={{ fontSize: 10, color: THEMES[post.theme]?.color ?? '#94a3b8', border: `1px solid ${THEMES[post.theme]?.color ?? '#94a3b8'}`, borderRadius: 100, padding: '1px 7px', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>
+                    <span style={{ fontSize: 10, color: THEMES[post.theme]?.color ?? '#94a3b8', border: `1px solid ${THEMES[post.theme]?.color ?? '#94a3b8'}`, borderRadius: 100, padding: '1px 7px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, flexShrink: 0 }}>
                       {THEMES[post.theme]?.icon} {post.theme}
                     </span>
                   )}
-                  <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 'auto', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {post.day_number}</span>
+                  {post.goal && <span style={{ fontSize: 12, color: '#cbd5e1', fontFamily: 'Nunito, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{post.goal}</span>}
                 </div>
                 <div style={{ fontSize: 13, color: '#f1f5f9', fontWeight: 700, marginBottom: post.image_url ? 8 : 10, fontFamily: 'Nunito, sans-serif' }}>{post.plan}</div>
                 {post.image_url && (
@@ -562,6 +595,22 @@ export default function ChallengePage() {
               </div>
             ))}
           </div>
+        )}
+        {posts.length > postsLimit && (
+          <button
+            onClick={() => setPostsLimit(l => l + 5)}
+            style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 12, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
+          >
+            ▼ もっと見る（あと{posts.length - postsLimit}人）
+          </button>
+        )}
+        {postsLimit > 5 && (
+          <button
+            onClick={() => setPostsLimit(5)}
+            style={{ width: '100%', marginTop: 6, padding: '10px', borderRadius: 12, border: '1px solid #2d3f5a', background: 'transparent', color: '#4a5568', fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 800, cursor: 'pointer' }}
+          >
+            ▲ 折りたたむ
+          </button>
         )}
       </div>
 
