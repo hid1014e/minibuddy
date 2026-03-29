@@ -4,36 +4,30 @@ import { useState } from 'react';
 
 const MIRROR_DATA = {
   キャラクター: [
-    { icon: '🧙', name: 'レオ総裁', desc: '「もっとパレスなお屋敷」に住む案内人。謎めいた言葉で修行者を導く。', badge: 'soon' },
-    { icon: '🐵', name: 'リアプレイ猿', desc: '1週間の振り返り時に出現。達成度に応じてセリフが変わる相棒。', badge: 'active' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
+    { icon: '🦁', name: 'レオ総裁', desc: '「もっとパレスなお屋敷」に住む案内人。' },
+    { icon: '🐵', name: 'リアプレイ猿', desc: '1週間の振り返り時、出現。' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
   ],
   アイテム: [
-    { icon: '🧹', name: 'イチジホウキ', desc: '早期登録・初回特典アイテム。最初の一歩を踏み出した者だけが持てる。', badge: 'limited' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
+    { icon: '🧹', name: 'イチジホウキ', desc: '早期登録、初回特典アイテム。' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
   ],
   黒魔術: [
-    { icon: '？', name: '？？？', desc: '禁断の力…解放の時を待っている。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '禁断の力…解放の時を待っている。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '禁断の力…解放の時を待っている。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '禁断の力…解放の時を待っている。', badge: 'locked' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
   ],
   称号: [
-    { icon: '🦸', name: 'カムバック・ヒーロー', desc: '適度な休息をすると贈られるミニ称号。再起の証。', badge: 'soon' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
-    { icon: '？', name: '？？？', desc: '霧の中…まだ姿は見えない。', badge: 'locked' },
+    { icon: '🦸', name: 'カムバック・ヒーロー', desc: '適度な休息をすると贈られるミニ称号。' },
+    { icon: '？', name: '？？？', desc: '' },
+    { icon: '？', name: '？？？', desc: '' },
   ],
-};
-
-const BADGE: Record<string, { label: string; style: React.CSSProperties }> = {
-  active:  { label: '実装済み',  style: { color: '#4ade80', background: '#0a1a0e', border: '1px solid #1a5030' } },
-  soon:    { label: '近日公開',  style: { color: '#b084f0', background: '#1a1040', border: '1px solid #3a2860' } },
-  limited: { label: '初回特典',  style: { color: '#f0a040', background: '#1a0e00', border: '1px solid #5a3800' } },
 };
 
 const SECTION_ICON: Record<string, string> = {
@@ -123,7 +117,7 @@ export default function MirrorButton() {
               Hagrit の世界に訪れるもの
             </p>
 
-            {(Object.entries(MIRROR_DATA) as [string, { icon: string; name: string; desc: string; badge: string }[]][]).map(([section, items], si) => (
+            {(Object.entries(MIRROR_DATA) as [string, { icon: string; name: string; desc: string }[]][]).map(([section, items], si) => (
               <div key={section}>
                 {si > 0 && <div style={{ height: '1px', background: '#1e1238', margin: '4px 16px' }} />}
                 <div style={{ padding: '4px 16px 8px' }}>
@@ -139,8 +133,7 @@ export default function MirrorButton() {
                   </div>
 
                   {items.map((item, i) => {
-                    const isLocked = item.badge === 'locked';
-                    const badge = BADGE[item.badge];
+                    const isLocked = item.name === '？？？';
                     const iconBg =
                       isLocked ? { background: '#151020', border: '1px solid #2a1a4a' } :
                       section === 'アイテム' ? { background: '#1a1500', border: '1px solid #5a4200' } :
@@ -152,7 +145,7 @@ export default function MirrorButton() {
                       <div key={i} style={{
                         display: 'flex', alignItems: 'flex-start', gap: '12px',
                         padding: '10px 12px', borderRadius: '10px', margin: '2px 0',
-                        opacity: isLocked ? 0.5 : 1,
+                        opacity: isLocked ? 0.45 : 1,
                       }}>
                         <div style={{
                           width: '34px', height: '34px', borderRadius: '8px', flexShrink: 0,
@@ -167,19 +160,12 @@ export default function MirrorButton() {
                           <div style={{ fontSize: '13px', color: isLocked ? '#4a3a6a' : '#c4a8f0', fontWeight: 500, lineHeight: 1.3 }}>
                             {item.name}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#7a6090', lineHeight: 1.5, marginTop: '2px' }}>
-                            {item.desc}
-                          </div>
+                          {item.desc ? (
+                            <div style={{ fontSize: '11px', color: '#7a6090', lineHeight: 1.5, marginTop: '2px' }}>
+                              {item.desc}
+                            </div>
+                          ) : null}
                         </div>
-                        {badge && (
-                          <span style={{
-                            fontSize: '9px', borderRadius: '4px', padding: '1px 5px',
-                            letterSpacing: '0.06em', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px',
-                            ...badge.style,
-                          }}>
-                            {badge.label}
-                          </span>
-                        )}
                       </div>
                     );
                   })}
