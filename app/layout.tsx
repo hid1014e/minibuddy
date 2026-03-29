@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import MirrorButton from './components/MirrorButton';
 
 export const metadata: Metadata = {
   title: 'Hagrit',
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           <span>ご意見</span>
         </a>
+        <MirrorButton />
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 16px 100px' }}>
           {children}
         </div>

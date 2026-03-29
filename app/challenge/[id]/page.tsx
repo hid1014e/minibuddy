@@ -164,6 +164,7 @@ export default function ChallengePage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [postsLimit, setPostsLimit] = useState(5);
+  const [commentedUsersCount, setCommentedUsersCount] = useState(0);
   const [cheerCount, setCheerCount] = useState(0);
   const [goal, setGoal] = useState<string | null>(null);
   const [theme, setChallengeTheme] = useState<string | null>(null);
@@ -190,7 +191,7 @@ export default function ChallengePage() {
   const loadPosts = useCallback(async (dayNum: number, uid: string) => {
     const { data: allDays } = await supabase
       .from('mini_challenge_days')
-      .select('id, plan, status, day_number, image_url, mini_challenge_id, mini_challenges!inner(id, owner_user_id, theme, status)')
+      .select('id, plan, status, day_number, image_url, updated_at, mini_challenge_id, mini_challenges!inner(id, owner_user_id, theme, status)')
       .eq('mini_challenges.status', 'active')
       .order('updated_at', { ascending: false });
 
@@ -234,8 +235,28 @@ export default function ChallengePage() {
     const otherPosts = deduplicated.filter((d: any) =>
       d.mini_challenges.owner_user_id !== uid && !commentedUserIds.has(d.mini_challenges.owner_user_id)
     );
-    // otherPostsはupdated_at新しい順（DB取得時点でORDER BY updated_at DESCなので順序維持）
-    const sorted = [...myPost, ...commentedPosts, ...otherPosts];
+
+    // コメントやり取りしたユーザー数を保存（もっと見る表示判定用）
+    setCommentedUsersCount(commentedUserIds.size);
+
+    // 優先4件 + 5枠目ランダム差し込み
+    const priorityAll = [...myPost, ...commentedPosts, ...otherPosts];
+    const priority4 = priorityAll.slice(0, 4);
+    const priority4Ids = new Set(priority4.map((d: any) => d.id));
+    const remaining = priorityAll.filter((d: any) => !priority4Ids.has(d.id));
+
+    const sevenDaysAgoStr = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const activeRemaining = remaining.filter((d: any) => (d.updated_at ?? '') >= sevenDaysAgoStr);
+    const zombieRemaining = remaining.filter((d: any) => (d.updated_at ?? '') < sevenDaysAgoStr);
+
+    let slot5: any | null = null;
+    if (remaining.length > 0) {
+      const useZombie = Math.random() < 0.3 && zombieRemaining.length > 0;
+      const pool = useZombie ? zombieRemaining : activeRemaining.length > 0 ? activeRemaining : zombieRemaining;
+      slot5 = pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    const sorted = slot5 ? [...priority4, slot5] : priority4;
     const ownerIds = sorted.map((d: any) => d.mini_challenges.owner_user_id);
     const dayIds = sorted.map((d: any) => d.id);
 
@@ -633,12 +654,12 @@ export default function ChallengePage() {
             ))}
           </div>
         )}
-        {posts.length > postsLimit && (
+        {posts.length > postsLimit && commentedUsersCount >= 5 && (
           <button
             onClick={() => setPostsLimit(l => l + 5)}
             style={{ width: '100%', marginTop: 10, padding: '12px', borderRadius: 12, border: '1px solid #2d3f5a', background: 'transparent', color: '#94a3b8', fontFamily: 'Nunito, sans-serif', fontSize: 13, fontWeight: 800, cursor: 'pointer' }}
           >
-            ▼ もっと見る（あと{posts.length - postsLimit}人）
+            ▼ もっと見る →
           </button>
         )}
         {postsLimit > 5 && (
