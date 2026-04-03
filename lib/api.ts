@@ -465,3 +465,121 @@ export async function getMyCommentedPosts(myUserId: string): Promise<string[]> {
     .eq('user_id', myUserId);
   return [...new Set((data ?? []).map((r: any) => r.day_id))];
 }
+
+// ─── アイテム・ミニ称号 ────────────────────────────────
+
+export async function getMyProfile(): Promise<{ nickname: string; items: string[]; mini_titles: string[] } | null> {
+  const user = await ensureAuth();
+  if (!user) return null;
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('nickname, items, mini_titles')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    nickname: data.nickname ?? '匿名',
+    items: data.items ?? [],
+    mini_titles: data.mini_titles ?? [],
+  };
+}
+
+export async function getUserMiniTitles(userId: string): Promise<string[]> {
+  const { data } = await supabase
+    .from('user_profiles')
+    .select('mini_titles')
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data?.mini_titles ?? [];
+}
+
+// イチジホウキを使ってカムバックヒーローを付与
+export async function useIchijiBroom(): Promise<'ok' | 'already_used' | 'no_item'> {
+  const user = await ensureAuth();
+  if (!user) return 'no_item';
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('items, mini_titles')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!profile) return 'no_item';
+
+  const items: string[] = profile.items ?? [];
+  const miniTitles: string[] = profile.mini_titles ?? [];
+
+  if (!items.includes('ichiji_broom')) return 'no_item';
+  if (miniTitles.includes('comeback_hero')) return 'already_used';
+
+  // アイテム消費 & ミニ称号付与
+  const newItems = items.filter((i: string) => i !== 'ichiji_broom');
+  const newTitles = [...miniTitles, 'comeback_hero'];
+  await supabase
+    .from('user_profiles')
+    .update({ items: newItems, mini_titles: newTitles })
+    .eq('user_id', user.id);
+  return 'ok';
+}
+
+// イチジホウキを付与（ホーム画面から呼ぶ）
+export async function grantIchijiBroom(): Promise<void> {
+  const user = await ensureAuth();
+  if (!user) return;
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('items')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!profile) return;
+  const items: string[] = profile.items ?? [];
+  if (items.includes('ichiji_broom')) return; // 既に持っている
+  await supabase
+    .from('user_profiles')
+    .update({ items: [...items, 'ichiji_broom'] })
+    .eq('user_id', user.id);
+}
+
+// 3日以上ログインしていないかチェック（登録後3日以上 & 記録0件）
+export async function shouldShowIchijiBroom(): Promise<boolean> {
+  const user = await ensureAuth();
+  if (!user) return false;
+
+  // localStorageで受け取り済みチェック
+  if (typeof window !== 'undefined') {
+    const received = localStorage.getItem('ichiji_broom_received');
+    if (received) return false;
+  }
+
+  // プロフ取得
+  const { data: profile } = await supabase
+    .from('user_profiles')
+    .select('items, mini_titles')
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!profile) return false;
+
+  // 既に持っているか授与済みなら出さない
+  const items: string[] = profile.items ?? [];
+  const miniTitles: string[] = profile.mini_titles ?? [];
+  if (items.includes('ichiji_broom') || miniTitles.includes('comeback_hero')) return false;
+
+  // 登録から3日以上経過しているか
+  const createdAt = new Date(user.created_at);
+  const diffMs = Date.now() - createdAt.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (diffDays < 3) return false;
+
+  // 記録が1件もないか
+  const { data: challenges } = await supabase
+    .from('mini_challenges')
+    .select('id')
+    .eq('owner_user_id', user.id);
+  if (!challenges || challenges.length === 0) return true;
+
+  const challengeIds = challenges.map((c: any) => c.id);
+  const { data: days } = await supabase
+    .from('mini_challenge_days')
+    .select('id')
+    .in('mini_challenge_id', challengeIds)
+    .limit(1);
+  return !days || days.length === 0;
+}

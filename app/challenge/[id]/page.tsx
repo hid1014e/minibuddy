@@ -35,6 +35,7 @@ type Post = {
   goal: string | null;
   streak_weeks: number;
   has_new_comment: boolean;
+  mini_titles: string[];
 };
 
 type Comment = {
@@ -272,7 +273,7 @@ export default function ChallengePage() {
     const dayIdsWithNewComment = new Set((incomingComments ?? []).map((c: any) => c.day_id));
 
     const [{ data: profiles }, { data: checks }, { data: allChallenges }] = await Promise.all([
-      supabase.from('user_profiles').select('user_id, nickname').in('user_id', ownerIds),
+      supabase.from('user_profiles').select('user_id, nickname, mini_titles').in('user_id', ownerIds),
       supabase.from('day_checks').select('target_day_id, checker_id').in('target_day_id', dayIds),
       supabase.from('mini_challenges').select('id, owner_user_id, started_at, goal').in('owner_user_id', ownerIds).order('started_at', { ascending: true }),
     ]);
@@ -307,6 +308,7 @@ export default function ChallengePage() {
         already_checked: dayChecks.some((c: any) => c.checker_id === uid),
         goal: userGoalMap[d.mini_challenges.owner_user_id] ?? null,
         streak_weeks: userStreakMap[d.mini_challenges.owner_user_id] ?? 0,
+        mini_titles: (profiles ?? []).find((p: any) => p.user_id === d.mini_challenges.owner_user_id)?.mini_titles ?? [],
         has_new_comment: (() => {
           if (d.mini_challenges.owner_user_id !== uid) return false;
           if (!dayIdsWithNewComment.has(d.id)) return false;
@@ -605,6 +607,9 @@ export default function ChallengePage() {
                     {post.nickname}
                   </span>
                   {(() => { const t = getTitle(post.streak_weeks); return <span style={{ fontSize: 10, color: '#94a3b8', background: 'rgba(255,255,255,0.05)', borderRadius: 100, padding: '1px 8px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, whiteSpace: 'nowrap' }}>{t.emoji} {t.title}</span>; })()}
+                  {post.mini_titles.includes('comeback_hero') && (
+                    <span style={{ fontSize: 10, color: '#a78bfa', background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.3)', borderRadius: 100, padding: '1px 7px', fontFamily: 'Nunito, sans-serif', fontWeight: 700, whiteSpace: 'nowrap' }}>🦸</span>
+                  )}
                   <span style={{ fontSize: 10, color: '#94a3b8', marginLeft: 'auto', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>Day {post.day_number}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>

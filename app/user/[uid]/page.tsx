@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   getUserProfile, getUserChallengeHistory, getUserStreakWeeks,
   getTitle, blockUser, unblockUser, isBlocked, ensureAuth,
+  getMyProfile, getUserMiniTitles, useIchijiBroom,
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
@@ -51,6 +52,11 @@ export default function UserProfilePage() {
   const [sendingReply, setSendingReply] = useState<string | null>(null);
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [myNickname, setMyNickname] = useState<string>('');
+  const [myItems, setMyItems] = useState<string[]>([]);
+  const [myMiniTitles, setMyMiniTitles] = useState<string[]>([]);
+  const [targetMiniTitles, setTargetMiniTitles] = useState<string[]>([]);
+  const [broomUsing, setBroomUsing] = useState(false);
+  const [broomResult, setBroomResult] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -70,6 +76,13 @@ export default function UserProfilePage() {
       if (me?.id) {
         const { data: myProf } = await supabase.from('user_profiles').select('nickname').eq('user_id', me.id).maybeSingle();
         setMyNickname(myProf?.nickname ?? '匿名');
+      }
+      const targetMini = await getUserMiniTitles(uid);
+      setTargetMiniTitles(targetMini);
+      if (me?.id === uid) {
+        const myProf = await getMyProfile();
+        setMyItems(myProf?.items ?? []);
+        setMyMiniTitles(myProf?.mini_titles ?? []);
       }
       setLoading(false);
     }
@@ -150,6 +163,22 @@ export default function UserProfilePage() {
     setSendingReply(null);
   }
 
+  async function handleUseBroom() {
+    setBroomUsing(true);
+    const result = await useIchijiBroom();
+    if (result === 'ok') {
+      setMyItems(prev => prev.filter(i => i !== 'ichiji_broom'));
+      setMyMiniTitles(prev => [...prev, 'comeback_hero']);
+      setTargetMiniTitles(prev => [...prev, 'comeback_hero']);
+      setBroomResult('カムバック・ヒーローの称号を獲得しました！ 🦸');
+    } else if (result === 'already_used') {
+      setBroomResult('すでにカムバック・ヒーローです！');
+    } else {
+      setBroomResult('アイテムがありません');
+    }
+    setBroomUsing(false);
+  }
+
   async function handleBlock() {
     setBlockLoading(true);
     if (blocked) {
@@ -198,9 +227,16 @@ export default function UserProfilePage() {
       <div style={{ background: '#1e2d4a', borderRadius: 20, padding: '24px 20px', marginBottom: 16, border: '1px solid #2d3f5a', textAlign: 'center', animation: 'fadeUp 0.3s ease' }}>
         <div style={{ fontSize: 52, animation: 'float 3s ease-in-out infinite', display: 'inline-block', marginBottom: 12 }}>🧙</div>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 22, color: '#f1f5f9', marginBottom: 10 }}>{nickname}</div>
-        <div style={{ display: 'inline-block', background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.35)', borderRadius: 100, padding: '6px 18px', fontFamily: 'Cinzel, serif', fontSize: 13, color: '#f0c040', animation: 'shimmer 2.5s ease-in-out infinite', marginBottom: 16 }}>
+        <div style={{ display: 'inline-block', background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.35)', borderRadius: 100, padding: '6px 18px', fontFamily: 'Cinzel, serif', fontSize: 13, color: '#f0c040', animation: 'shimmer 2.5s ease-in-out infinite', marginBottom: targetMiniTitles.includes('comeback_hero') ? 8 : 16 }}>
           {titleData.emoji} {titleData.title}
         </div>
+        {targetMiniTitles.includes('comeback_hero') && (
+          <div style={{ marginBottom: 16 }}>
+            <span style={{ display: 'inline-block', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.35)', borderRadius: 100, padding: '4px 12px', fontFamily: 'Cinzel, serif', fontSize: 11, color: '#a78bfa', letterSpacing: '0.04em' }}>
+              🦸 カムバック・ヒーロー
+            </span>
+          </div>
+        )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: isSelf ? 0 : 16 }}>
           <div style={{ background: '#0f1729', borderRadius: 12, padding: '10px 6px' }}>
@@ -216,6 +252,51 @@ export default function UserProfilePage() {
             <div style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, marginTop: 2 }}>達成率</div>
           </div>
         </div>
+
+        {/* アイテムセクション（自分のみ） */}
+        {isSelf && (myItems.length > 0 || myMiniTitles.includes('comeback_hero')) && (
+          <div style={{ marginTop: 16, borderTop: '1px solid #2d3f5a', paddingTop: 14 }}>
+            <div style={{ fontSize: 10, color: '#5a4480', letterSpacing: '0.1em', marginBottom: 10, textTransform: 'uppercase' }}>
+              ✦ 所持アイテム
+            </div>
+            {myItems.includes('ichiji_broom') && (
+              <div style={{ background: 'rgba(240,192,64,0.06)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 14, padding: '14px', marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontSize: '28px' }}>🧹</span>
+                  <div style={{ flex: 1, textAlign: 'left' }}>
+                    <div style={{ fontFamily: 'Cinzel, serif', fontSize: 14, color: '#f0c040' }}>イチジホウキ</div>
+                    <div style={{ fontSize: 11, color: '#7a6090', marginTop: 2 }}>早期登録・初回特典アイテム</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 12, color: '#c4a8f0', fontFamily: 'Nunito, sans-serif', lineHeight: 1.6, marginBottom: 10 }}>
+                  使うと「カムバック・ヒーロー」のミニ称号が付与されます。
+                </div>
+                {broomResult ? (
+                  <div style={{ fontSize: 13, color: '#a78bfa', fontWeight: 700, fontFamily: 'Nunito, sans-serif', padding: '8px', background: 'rgba(167,139,250,0.1)', borderRadius: 10, textAlign: 'center' }}>
+                    {broomResult}
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleUseBroom}
+                    disabled={broomUsing}
+                    style={{ width: '100%', padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg, #f0c040, #c49a20)', color: '#0f1729', fontFamily: 'Cinzel, serif', fontSize: 13, fontWeight: 800, cursor: 'pointer', letterSpacing: '0.04em' }}
+                  >
+                    {broomUsing ? '使用中...' : '🧹 ホウキを使う'}
+                  </button>
+                )}
+              </div>
+            )}
+            {myMiniTitles.includes('comeback_hero') && (
+              <div style={{ background: 'rgba(167,139,250,0.06)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 14, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: '24px' }}>🦸</span>
+                <div style={{ textAlign: 'left' }}>
+                  <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#a78bfa' }}>カムバック・ヒーロー</div>
+                  <div style={{ fontSize: 11, color: '#7a6090', marginTop: 2 }}>ミニ称号 · 適度な休息の証</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ブロックボタン（自分以外） */}
         {!isSelf && (
