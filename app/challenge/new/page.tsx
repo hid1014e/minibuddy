@@ -27,6 +27,7 @@ export default function NewChallengePage() {
     setLoading(true);
     try {
       const challenge = await startChallenge(selectedTheme ?? undefined, goal.trim());
+      localStorage.setItem('onboarding_done', '1');
       router.push(`/challenge/${challenge.id}`);
     } catch (e) {
       console.error(e);
