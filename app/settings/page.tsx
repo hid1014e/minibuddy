@@ -70,6 +70,11 @@ export default function SettingsPage() {
     if (deleteInput !== 'DELETE') return;
     setDeleting(true);
     await deleteMyAccount();
+    // アカウント削除時はonboarding関連のlocalStorageも全消去
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('onboarding_done');
+      localStorage.removeItem('ichiji_broom_received');
+    }
     router.replace('/');
   }
 

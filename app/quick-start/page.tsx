@@ -202,19 +202,70 @@ export default function QuickStartPage() {
           <p className="text-white/30 text-xs text-center mb-3 tracking-widest uppercase">
             suggested quests
           </p>
-          <div className="flex flex-col gap-2">
-            {TIMER_EXAMPLES.map((ex) => {
+          <div className="flex flex-col gap-3">
+            {TIMER_EXAMPLES.map((ex, i) => {
               const active = tappedExample === ex.text;
+              const gradients = [
+                'linear-gradient(135deg, rgba(240,192,64,0.18), rgba(240,192,64,0.06))',
+                'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(109,40,217,0.06))',
+                'linear-gradient(135deg, rgba(240,192,64,0.14), rgba(139,92,246,0.10))',
+                'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(240,192,64,0.08))',
+                'linear-gradient(135deg, rgba(196,168,240,0.14), rgba(139,92,246,0.06))',
+              ];
+              const borders = [
+                active ? 'rgba(240,192,64,0.7)' : 'rgba(240,192,64,0.2)',
+                active ? 'rgba(139,92,246,0.8)' : 'rgba(139,92,246,0.25)',
+                active ? 'rgba(240,192,64,0.65)' : 'rgba(240,192,64,0.18)',
+                active ? 'rgba(139,92,246,0.75)' : 'rgba(139,92,246,0.2)',
+                active ? 'rgba(196,168,240,0.7)' : 'rgba(196,168,240,0.18)',
+              ];
+              const textColors = [
+                active ? '#f0c040' : '#c9a84c',
+                active ? '#c4a8f0' : '#9b7fd4',
+                active ? '#f0c040' : '#c9a84c',
+                active ? '#c4a8f0' : '#9b7fd4',
+                active ? '#c4a8f0' : '#9b7fd4',
+              ];
+              const glows = [
+                '0 0 20px rgba(240,192,64,0.35)',
+                '0 0 20px rgba(139,92,246,0.4)',
+                '0 0 20px rgba(240,192,64,0.3)',
+                '0 0 20px rgba(139,92,246,0.35)',
+                '0 0 20px rgba(196,168,240,0.3)',
+              ];
               return (
                 <button
                   key={ex.text}
                   onClick={() => handleTapExample(ex.text)}
-                  className={`w-full text-left px-4 py-3 rounded-2xl border transition-all duration-200 active:scale-[0.98] ${active ? 'bg-violet-800/60 border-violet-400/80 shadow-[0_0_18px_rgba(139,92,246,0.5)]' : 'bg-white/[0.03] border-white/[0.07] hover:bg-violet-900/25 hover:border-violet-500/30'}`}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '14px 18px',
+                    borderRadius: '16px',
+                    border: `1.5px solid ${borders[i % borders.length]}`,
+                    background: active ? gradients[i % gradients.length].replace('0.18', '0.28').replace('0.14', '0.22') : gradients[i % gradients.length],
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: active ? glows[i % glows.length] : 'none',
+                    transform: active ? 'scale(1.01)' : 'scale(1)',
+                  }}
                 >
-                  <span className="flex items-center gap-3">
-                    <span className="text-lg">{ex.icon}</span>
-                    <span className={`text-sm font-medium ${active ? 'text-white' : 'text-white/50'}`}>{ex.text}</span>
-                    {active && <span className="ml-auto text-violet-300 text-xs">✦</span>}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <span style={{ fontSize: '20px', filter: active ? 'drop-shadow(0 0 6px rgba(240,192,64,0.6))' : 'none' }}>{ex.icon}</span>
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      fontFamily: 'Nunito, sans-serif',
+                      color: textColors[i % textColors.length],
+                      flex: 1,
+                    }}>{ex.text}</span>
+                    {active && (
+                      <span style={{
+                        fontSize: '12px',
+                        color: i % 2 === 0 ? '#f0c040' : '#c4a8f0',
+                        textShadow: i % 2 === 0 ? '0 0 8px rgba(240,192,64,0.8)' : '0 0 8px rgba(196,168,240,0.8)',
+                      }}>✦</span>
+                    )}
                   </span>
                 </button>
               );
