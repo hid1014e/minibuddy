@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { startChallenge } from '@/lib/api';
 
 const THEMES = [
@@ -13,8 +13,10 @@ const THEMES = [
   { label: 'その他', icon: '🧪', color: '#94a3b8', bg: 'rgba(148,163,184,0.1)', border: '#94a3b8' },
 ];
 
-export default function NewChallengePage() {
+function NewChallengeForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const showProgress = searchParams.get('progress') === '1';
   const [selectedTheme, setSelectedTheme] = useState<string | null>(null);
   const [goal, setGoal] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,11 +46,23 @@ export default function NewChallengePage() {
         .start-btn:hover { transform:translateY(-2px); }
       `}</style>
 
-      <div style={{ textAlign: 'center', marginBottom: 28, animation: 'fadeUp 0.4s ease' }}>
+      <div style={{ textAlign: 'center', marginBottom: showProgress ? 16 : 28, animation: 'fadeUp 0.4s ease' }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)' }}>
           Hagrit
         </div>
       </div>
+
+      {showProgress && (
+        <div style={{ marginBottom: 28, animation: 'fadeUp 0.45s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontFamily: 'Cinzel, serif', fontSize: 11, color: '#f0c040', letterSpacing: '0.1em' }}>STEP 2 / 2</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>習慣の設定</span>
+          </div>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 100, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, #f0c040, #c49a20)', borderRadius: 100, transition: 'width 0.4s ease' }} />
+          </div>
+        </div>
+      )}
 
       <div style={{ textAlign: 'center', marginBottom: 28, animation: 'fadeUp 0.5s ease' }}>
         <div style={{ fontSize: 52, animation: 'float 3s ease-in-out infinite', display: 'inline-block', marginBottom: 12 }}>🪄</div>
@@ -58,6 +72,15 @@ export default function NewChallengePage() {
         <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8, margin: 0 }}>
           7日間の小さな積み重ねが<br />あなたを変える。
         </p>
+      </div>
+
+      {/* リアプレイ猿の予告バナー */}
+      <div style={{ background: 'rgba(30,45,74,0.8)', border: '1px solid rgba(167,139,250,0.25)', borderRadius: 14, padding: '12px 16px', marginBottom: 20, animation: 'fadeUp 0.55s ease', display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ fontSize: 28, flexShrink: 0 }}>🐒</div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 10, color: '#a78bfa', fontFamily: 'Cinzel, serif', letterSpacing: '0.08em', marginBottom: 3 }}>リアプレイ猿より</div>
+          <div style={{ fontSize: 12, color: '#c4a8f0', fontFamily: 'Nunito, sans-serif', fontWeight: 700, lineHeight: 1.6 }}>7日後、修行の結果を届けに来るぞ。<br />楽しみにしておけ。</div>
+        </div>
       </div>
 
       {/* テーマ選択 */}
@@ -99,4 +122,8 @@ export default function NewChallengePage() {
       </button>
     </div>
   );
+}
+
+export default function NewChallengePage() {
+  return <Suspense><NewChallengeForm /></Suspense>;
 }

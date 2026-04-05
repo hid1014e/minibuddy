@@ -43,6 +43,37 @@ function generateNickname() {
 type Phase = 'timer' | 'form' | 'done' | 'saving';
 const TOTAL_SEC = 5 * 60;
 
+const CARD_GRADIENTS = [
+  'linear-gradient(135deg, rgba(240,192,64,0.18), rgba(240,192,64,0.06))',
+  'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(109,40,217,0.06))',
+  'linear-gradient(135deg, rgba(240,192,64,0.14), rgba(139,92,246,0.10))',
+  'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(240,192,64,0.08))',
+  'linear-gradient(135deg, rgba(196,168,240,0.14), rgba(139,92,246,0.06))',
+];
+const CARD_BORDERS_ACTIVE = [
+  'rgba(240,192,64,0.7)',
+  'rgba(139,92,246,0.8)',
+  'rgba(240,192,64,0.65)',
+  'rgba(139,92,246,0.75)',
+  'rgba(196,168,240,0.7)',
+];
+const CARD_BORDERS_IDLE = [
+  'rgba(240,192,64,0.2)',
+  'rgba(139,92,246,0.25)',
+  'rgba(240,192,64,0.18)',
+  'rgba(139,92,246,0.2)',
+  'rgba(196,168,240,0.18)',
+];
+const CARD_TEXT_ACTIVE = ['#f0c040', '#c4a8f0', '#f0c040', '#c4a8f0', '#c4a8f0'];
+const CARD_TEXT_IDLE = ['#c9a84c', '#9b7fd4', '#c9a84c', '#9b7fd4', '#9b7fd4'];
+const CARD_GLOWS = [
+  '0 0 20px rgba(240,192,64,0.35)',
+  '0 0 20px rgba(139,92,246,0.4)',
+  '0 0 20px rgba(240,192,64,0.3)',
+  '0 0 20px rgba(139,92,246,0.35)',
+  '0 0 20px rgba(196,168,240,0.3)',
+];
+
 export default function QuickStartPage() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>('timer');
@@ -205,34 +236,6 @@ export default function QuickStartPage() {
           <div className="flex flex-col gap-3">
             {TIMER_EXAMPLES.map((ex, i) => {
               const active = tappedExample === ex.text;
-              const gradients = [
-                'linear-gradient(135deg, rgba(240,192,64,0.18), rgba(240,192,64,0.06))',
-                'linear-gradient(135deg, rgba(139,92,246,0.18), rgba(109,40,217,0.06))',
-                'linear-gradient(135deg, rgba(240,192,64,0.14), rgba(139,92,246,0.10))',
-                'linear-gradient(135deg, rgba(139,92,246,0.15), rgba(240,192,64,0.08))',
-                'linear-gradient(135deg, rgba(196,168,240,0.14), rgba(139,92,246,0.06))',
-              ];
-              const borders = [
-                active ? 'rgba(240,192,64,0.7)' : 'rgba(240,192,64,0.2)',
-                active ? 'rgba(139,92,246,0.8)' : 'rgba(139,92,246,0.25)',
-                active ? 'rgba(240,192,64,0.65)' : 'rgba(240,192,64,0.18)',
-                active ? 'rgba(139,92,246,0.75)' : 'rgba(139,92,246,0.2)',
-                active ? 'rgba(196,168,240,0.7)' : 'rgba(196,168,240,0.18)',
-              ];
-              const textColors = [
-                active ? '#f0c040' : '#c9a84c',
-                active ? '#c4a8f0' : '#9b7fd4',
-                active ? '#f0c040' : '#c9a84c',
-                active ? '#c4a8f0' : '#9b7fd4',
-                active ? '#c4a8f0' : '#9b7fd4',
-              ];
-              const glows = [
-                '0 0 20px rgba(240,192,64,0.35)',
-                '0 0 20px rgba(139,92,246,0.4)',
-                '0 0 20px rgba(240,192,64,0.3)',
-                '0 0 20px rgba(139,92,246,0.35)',
-                '0 0 20px rgba(196,168,240,0.3)',
-              ];
               return (
                 <button
                   key={ex.text}
@@ -242,11 +245,11 @@ export default function QuickStartPage() {
                     textAlign: 'left',
                     padding: '14px 18px',
                     borderRadius: '16px',
-                    border: `1.5px solid ${borders[i % borders.length]}`,
-                    background: active ? gradients[i % gradients.length].replace('0.18', '0.28').replace('0.14', '0.22') : gradients[i % gradients.length],
+                    border: `1.5px solid ${active ? CARD_BORDERS_ACTIVE[i % CARD_BORDERS_ACTIVE.length] : CARD_BORDERS_IDLE[i % CARD_BORDERS_IDLE.length]}`,
+                    background: active ? CARD_GRADIENTS[i % CARD_GRADIENTS.length].replace('0.18', '0.28').replace('0.14', '0.22') : CARD_GRADIENTS[i % CARD_GRADIENTS.length],
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    boxShadow: active ? glows[i % glows.length] : 'none',
+                    boxShadow: active ? CARD_GLOWS[i % CARD_GLOWS.length] : 'none',
                     transform: active ? 'scale(1.01)' : 'scale(1)',
                   }}
                 >
@@ -256,7 +259,7 @@ export default function QuickStartPage() {
                       fontSize: '14px',
                       fontWeight: 700,
                       fontFamily: 'Nunito, sans-serif',
-                      color: textColors[i % textColors.length],
+                      color: active ? CARD_TEXT_ACTIVE[i % CARD_TEXT_ACTIVE.length] : CARD_TEXT_IDLE[i % CARD_TEXT_IDLE.length],
                       flex: 1,
                     }}>{ex.text}</span>
                     {active && (
@@ -305,7 +308,7 @@ export default function QuickStartPage() {
     );
   }
 
-  // ── 完了画面（今日のログ）──────────────────────────────────────────
+  // ── 完了画面 ──────────────────────────────────────────
   if (phase === 'done') {
     return (
       <div className="min-h-screen bg-[#0e0b1a] flex flex-col items-center justify-center px-6">
@@ -318,48 +321,101 @@ export default function QuickStartPage() {
         `}</style>
 
         {/* ヘッダー */}
-        <div className="fade-up w-full max-w-xs mb-6 text-center" style={{ animationDelay: '0s' }}>
-          <p className="text-amber-300/60 text-xs tracking-widest uppercase mb-3">day 1 complete</p>
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-violet-900/40 border border-violet-500/30 mb-4">
-            <span className="text-violet-300 text-xs">✦</span>
-            <span className="text-white/70 text-sm font-medium">{savedNickname}</span>
-            <span className="text-white/30 text-xs">·</span>
-            <span className="text-amber-300/80 text-sm">{savedActivity}</span>
+        <div className="fade-up w-full max-w-xs mb-8 text-center" style={{ animationDelay: '0s' }}>
+          <p className="text-amber-300/60 text-xs tracking-widest uppercase mb-4">day 1 complete</p>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 18px',
+              borderRadius: '999px',
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.22), rgba(109,40,217,0.10))',
+              border: '1.5px solid rgba(139,92,246,0.35)',
+              boxShadow: '0 0 18px rgba(139,92,246,0.2)',
+              marginBottom: '20px',
+            }}
+          >
+            <span style={{ color: '#c4a8f0', fontSize: '12px' }}>✦</span>
+            <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: '14px', fontWeight: 600 }}>{savedNickname}</span>
+            <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px' }}>·</span>
+            <span style={{ color: '#f0c040', fontSize: '14px', fontWeight: 600 }}>{savedActivity}</span>
           </div>
-          <h1 className="text-white text-2xl font-bold tracking-wide">今日のログ</h1>
-          <p className="text-white/40 text-sm mt-1">1日目を刻んだ</p>
+          <h1
+            style={{
+              fontSize: '26px',
+              fontWeight: 700,
+              letterSpacing: '0.02em',
+              background: 'linear-gradient(135deg, #f0c040 0%, #c4a8f0 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              marginBottom: '8px',
+            }}
+          >
+            お疲れ様でした☕️
+          </h1>
+          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px' }}>1日目を刻んだ</p>
         </div>
 
         {/* ステータスカード */}
         <div className="fade-up w-full max-w-xs mb-8" style={{ animationDelay: '0.15s' }}>
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <span className="text-amber-400 text-lg">🔥</span>
-                <span className="text-white/50 text-sm">連続記録</span>
+          <div
+            style={{
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.07)',
+              background: 'linear-gradient(160deg, rgba(139,92,246,0.08) 0%, rgba(14,11,26,0.6) 100%)',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 22px',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '22px', filter: 'drop-shadow(0 0 8px rgba(251,191,36,0.6))' }}>🔥</span>
+                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '15px' }}>連続記録</span>
               </div>
-              <span className="text-amber-300 text-lg font-bold">1日</span>
+              <span style={{ color: '#fbbf24', fontSize: '20px', fontWeight: 700, textShadow: '0 0 12px rgba(251,191,36,0.5)' }}>1日</span>
             </div>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-              <div className="flex items-center gap-2">
-                <span className="text-violet-400 text-lg">✨</span>
-                <span className="text-white/50 text-sm">今日の達成者</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 22px',
+                borderBottom: '1px solid rgba(255,255,255,0.06)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '22px', filter: 'drop-shadow(0 0 8px rgba(167,139,250,0.6))' }}>✨</span>
+                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '15px' }}>今日の達成者</span>
               </div>
-              <span className="text-violet-300 text-lg font-bold">
+              <span style={{ color: '#c4a8f0', fontSize: '20px', fontWeight: 700, textShadow: '0 0 12px rgba(196,168,240,0.5)' }}>
                 {todayCount !== null ? `${todayCount}人` : '…'}
               </span>
             </div>
-            <div className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-400 text-lg">🚀</span>
-                <span className="text-white/50 text-sm">チャレンジ</span>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '18px 22px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '22px', filter: 'drop-shadow(0 0 8px rgba(52,211,153,0.5))' }}>🚀</span>
+                <span style={{ color: 'rgba(255,255,255,0.55)', fontSize: '15px' }}>チャレンジ</span>
               </div>
-              <span className="text-white/70 text-sm font-medium">7日間スタート</span>
+              <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: '15px', fontWeight: 600 }}>7日間スタート</span>
             </div>
           </div>
         </div>
 
-        {/* ホームへボタン */}
         <button
           onClick={() => router.push('/')}
           className="fade-up w-full max-w-xs py-4 rounded-2xl text-white text-lg font-semibold tracking-wide bg-gradient-to-r from-violet-600 to-amber-500 shadow-[0_4px_24px_rgba(109,40,217,0.5)] hover:opacity-90 active:scale-95 transition-all duration-150"
@@ -378,20 +434,48 @@ export default function QuickStartPage() {
 
   return (
     <div className="min-h-screen bg-[#0e0b1a] flex flex-col px-5 pt-12 pb-24">
-      {/* ヘッダー */}
-      <div className="mb-8">
-        <p className="text-amber-300/60 text-xs tracking-widest uppercase mb-2">quest complete</p>
-        <h1 className="text-white text-2xl font-semibold leading-snug">
-          記録しよう ✦
+      <div className="mb-10">
+        <p
+          style={{
+            color: 'rgba(240,192,64,0.6)',
+            fontSize: '11px',
+            letterSpacing: '0.15em',
+            textTransform: 'uppercase',
+            marginBottom: '12px',
+          }}
+        >
+          quest complete
+        </p>
+        <h1
+          style={{
+            fontSize: '24px',
+            fontWeight: 700,
+            background: 'linear-gradient(135deg, #f0c040 0%, #c4a8f0 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            marginBottom: '6px',
+          }}
+        >
+          お疲れ様でした☕️
         </h1>
-        <p className="text-white/40 text-sm mt-1">2問だけ答えて、チャレンジを始める</p>
+        <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px' }}>2問だけ答えて、チャレンジを始める</p>
       </div>
 
-      {/* ニックネーム */}
-      <section className="mb-8">
-        <label className="block text-white/60 text-xs tracking-widest uppercase mb-3">
-          name
-          <span className="text-white/25 text-xs ml-2 normal-case">（空欄で自動生成）</span>
+      <section className="mb-9">
+        <label
+          style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'rgba(196,168,240,0.8)',
+            marginBottom: '10px',
+            letterSpacing: '0.04em',
+          }}
+        >
+          ニックネーム
+          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', marginLeft: '8px', fontWeight: 400 }}>
+            （空欄で自動生成）
+          </span>
         </label>
         <input
           type="text"
@@ -399,43 +483,115 @@ export default function QuickStartPage() {
           onChange={(e) => setNickname(e.target.value)}
           placeholder={placeholderNick}
           maxLength={20}
-          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-white/20 text-base focus:outline-none focus:border-violet-400/50 focus:bg-violet-900/20 transition-all duration-150"
+          style={{
+            width: '100%',
+            background: 'rgba(139,92,246,0.07)',
+            border: '1.5px solid rgba(139,92,246,0.2)',
+            borderRadius: '14px',
+            padding: '14px 18px',
+            color: 'white',
+            fontSize: '16px',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+          className="focus:border-violet-400/60 focus:bg-violet-900/20 transition-all duration-150 placeholder-white/20"
         />
       </section>
 
-      {/* 活動選択 */}
-      <section className="mb-8">
-        <label className="block text-white/60 text-xs tracking-widest uppercase mb-3">
-          today's quest
+      <section className="mb-9">
+        <label
+          style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'rgba(240,192,64,0.8)',
+            marginBottom: '12px',
+            letterSpacing: '0.04em',
+          }}
+        >
+          今日やったこと
         </label>
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {ACTIVITY_OPTIONS.map((opt) => {
             const active = selectedActivity === opt.label;
             return (
               <button
                 key={opt.label}
                 onClick={() => setSelectedActivity(opt.label)}
-                className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl border transition-all duration-200 active:scale-95 ${active ? 'bg-violet-800/60 border-violet-400/80 shadow-[0_0_18px_rgba(139,92,246,0.5)]' : 'bg-white/[0.03] border-white/[0.07] hover:bg-violet-900/25 hover:border-violet-500/30'}`}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '14px 4px',
+                  borderRadius: '16px',
+                  border: active ? '1.5px solid rgba(139,92,246,0.8)' : '1.5px solid rgba(255,255,255,0.07)',
+                  background: active
+                    ? 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(109,40,217,0.12))'
+                    : 'rgba(255,255,255,0.03)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  boxShadow: active ? '0 0 18px rgba(139,92,246,0.4)' : 'none',
+                  transform: active ? 'scale(1.04)' : 'scale(1)',
+                }}
               >
-                <span className="text-xl">{opt.emoji}</span>
-                <span className={`text-xs font-medium leading-tight text-center ${active ? 'text-white' : 'text-white/45'}`}>{opt.label}</span>
-                {active && <span className="text-violet-300 text-[9px]">✦</span>}
+                <span style={{ fontSize: '22px', filter: active ? 'drop-shadow(0 0 6px rgba(167,139,250,0.7))' : 'none' }}>
+                  {opt.emoji}
+                </span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: active ? 'white' : 'rgba(255,255,255,0.45)',
+                    lineHeight: 1.2,
+                    textAlign: 'center',
+                  }}
+                >
+                  {opt.label}
+                </span>
+                {active && <span style={{ fontSize: '9px', color: '#c4a8f0' }}>✦</span>}
               </button>
             );
           })}
           <button
             onClick={() => setSelectedActivity('other')}
-            className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-2xl border transition-all duration-200 active:scale-95 ${isOther ? 'bg-amber-800/40 border-amber-400/70 shadow-[0_0_18px_rgba(245,158,11,0.4)]' : 'bg-white/[0.03] border-white/[0.07] hover:bg-amber-900/20 hover:border-amber-500/30'}`}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '14px 4px',
+              borderRadius: '16px',
+              border: isOther ? '1.5px solid rgba(240,192,64,0.7)' : '1.5px solid rgba(255,255,255,0.07)',
+              background: isOther
+                ? 'linear-gradient(135deg, rgba(240,192,64,0.2), rgba(245,158,11,0.08))'
+                : 'rgba(255,255,255,0.03)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: isOther ? '0 0 18px rgba(240,192,64,0.35)' : 'none',
+              transform: isOther ? 'scale(1.04)' : 'scale(1)',
+            }}
           >
-            <span className="text-xl">✏️</span>
-            <span className={`text-xs font-medium ${isOther ? 'text-white' : 'text-white/45'}`}>その他</span>
-            {isOther && <span className="text-amber-300 text-[9px]">✦</span>}
+            <span style={{ fontSize: '22px' }}>✏️</span>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: isOther ? 'white' : 'rgba(255,255,255,0.45)' }}>その他</span>
+            {isOther && <span style={{ fontSize: '9px', color: '#f0c040' }}>✦</span>}
           </button>
         </div>
         {hintText && (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-900/20 border border-violet-500/20 mb-3">
-            <span className="text-violet-400 text-xs">✦</span>
-            <p className="text-violet-300/70 text-xs">例：{hintText}</p>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '12px 16px',
+              borderRadius: '14px',
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.12), rgba(109,40,217,0.06))',
+              border: '1px solid rgba(139,92,246,0.2)',
+              marginBottom: '12px',
+            }}
+          >
+            <span style={{ color: '#c4a8f0', fontSize: '12px' }}>✦</span>
+            <p style={{ color: 'rgba(196,168,240,0.75)', fontSize: '13px' }}>例：{hintText}</p>
           </div>
         )}
         {isOther && (
@@ -446,16 +602,36 @@ export default function QuickStartPage() {
             placeholder="例：ギター、散歩、日記…"
             maxLength={30}
             autoFocus
-            className="w-full bg-white/[0.04] border border-amber-400/30 rounded-xl px-4 py-3 text-white placeholder-white/20 text-base focus:outline-none focus:border-amber-400/60 focus:bg-amber-900/10 transition-all duration-150"
+            style={{
+              width: '100%',
+              background: 'rgba(240,192,64,0.06)',
+              border: '1.5px solid rgba(240,192,64,0.3)',
+              borderRadius: '14px',
+              padding: '14px 18px',
+              color: 'white',
+              fontSize: '16px',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
           />
         )}
       </section>
 
-      {/* 明日 */}
-      <section className="mb-8">
-        <label className="block text-white/60 text-xs tracking-widest uppercase mb-3">
-          tomorrow
-          <span className="text-white/25 text-xs ml-2 normal-case">（任意）</span>
+      <section className="mb-9">
+        <label
+          style={{
+            display: 'block',
+            fontSize: '13px',
+            fontWeight: 600,
+            color: 'rgba(196,168,240,0.7)',
+            marginBottom: '10px',
+            letterSpacing: '0.04em',
+          }}
+        >
+          明日は何を５分やる？
+          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', marginLeft: '8px', fontWeight: 400 }}>
+            （任意）
+          </span>
         </label>
         <input
           type="text"
@@ -463,23 +639,61 @@ export default function QuickStartPage() {
           onChange={(e) => setTomorrow(e.target.value)}
           placeholder="例：また読書を10ページ"
           maxLength={50}
-          className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-white/20 text-base focus:outline-none focus:border-violet-400/50 focus:bg-violet-900/20 transition-all duration-150"
+          style={{
+            width: '100%',
+            background: 'rgba(139,92,246,0.07)',
+            border: '1.5px solid rgba(139,92,246,0.15)',
+            borderRadius: '14px',
+            padding: '14px 18px',
+            color: 'white',
+            fontSize: '16px',
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+          className="focus:border-violet-400/50 transition-all duration-150"
         />
       </section>
 
       {error && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-900/20 border border-red-500/30 mb-4">
-          <p className="text-red-400 text-sm">{error}</p>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '12px 16px',
+            borderRadius: '14px',
+            background: 'rgba(239,68,68,0.12)',
+            border: '1px solid rgba(239,68,68,0.3)',
+            marginBottom: '16px',
+          }}
+        >
+          <p style={{ color: '#f87171', fontSize: '14px' }}>{error}</p>
         </div>
       )}
 
       <button
         onClick={handleSave}
         disabled={!canSave}
-        className={`w-full py-4 rounded-2xl text-white text-lg font-semibold tracking-wide transition-all duration-150 active:scale-95 ${canSave ? 'bg-gradient-to-r from-violet-600 to-amber-500 shadow-[0_4px_24px_rgba(109,40,217,0.5)] hover:opacity-90' : 'bg-white/[0.08] text-white/25 cursor-not-allowed'}`}
+        style={{
+          width: '100%',
+          padding: '16px',
+          borderRadius: '16px',
+          fontSize: '17px',
+          fontWeight: 700,
+          letterSpacing: '0.03em',
+          color: 'white',
+          border: 'none',
+          cursor: canSave ? 'pointer' : 'not-allowed',
+          background: canSave
+            ? 'linear-gradient(135deg, #7c3aed 0%, #f59e0b 100%)'
+            : 'rgba(255,255,255,0.08)',
+          opacity: canSave ? 1 : 0.4,
+          boxShadow: canSave ? '0 4px 24px rgba(109,40,217,0.5)' : 'none',
+          transition: 'all 0.2s ease',
+        }}
       >
         記録して、チャレンジ開始 →
       </button>
     </div>
-  );
+  )
 }

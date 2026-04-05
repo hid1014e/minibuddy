@@ -3,25 +3,39 @@
 import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createProfile, getProfile } from '@/lib/api';
+import { supabase } from '@/lib/supabase';
 
 function NicknameForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const userId = searchParams.get('uid') ?? '';
+  const uidParam = searchParams.get('uid') ?? '';
   const next = searchParams.get('next') ?? '/challenge/new';
+  const showProgress = searchParams.get('progress') === '1';
   const [nickname, setNickname] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [userId, setUserId] = useState(uidParam);
 
   useEffect(() => {
     async function check() {
-      if (!userId) return;
-      const profile = await getProfile(userId);
+      let uid = uidParam;
+      if (!uid) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          uid = user.id;
+        } else {
+          const { data, error } = await supabase.auth.signInAnonymously();
+          if (error || !data.user) return;
+          uid = data.user.id;
+        }
+        setUserId(uid);
+      }
+      const profile = await getProfile(uid);
       if (profile) { router.replace(next); return; }
       setLoading(false);
     }
     check();
-  }, [userId, next, router]);
+  }, [uidParam, next, router]);
 
   async function handleSubmit() {
     if (!nickname.trim()) { setError('名前を入力してください'); return; }
@@ -52,9 +66,21 @@ function NicknameForm() {
         @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
       `}</style>
 
-      <div style={{ textAlign: 'center', marginBottom: 32, animation: 'fadeUp 0.4s ease' }}>
+      <div style={{ textAlign: 'center', marginBottom: showProgress ? 16 : 32, animation: 'fadeUp 0.4s ease' }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)' }}>Hagrit</div>
       </div>
+
+      {showProgress && (
+        <div style={{ marginBottom: 28, animation: 'fadeUp 0.45s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontFamily: 'Cinzel, serif', fontSize: 11, color: '#f0c040', letterSpacing: '0.1em' }}>STEP 1 / 2</span>
+            <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700 }}>ニックネーム</span>
+          </div>
+          <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 100, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: '50%', background: 'linear-gradient(90deg, #f0c040, #c49a20)', borderRadius: 100, transition: 'width 0.4s ease' }} />
+          </div>
+        </div>
+      )}
 
       <div style={{ textAlign: 'center', marginBottom: 32, animation: 'fadeUp 0.5s ease' }}>
         <div style={{ fontSize: 60, animation: 'float 3s ease-in-out infinite', display: 'inline-block', marginBottom: 14 }}>🧙</div>

@@ -35,7 +35,7 @@ export default function CompletePage() {
 
   // リアプレイ猿のセリフ
   const monkeyLines = doneCount === 7
-    ? ['ウキキ！完璧じゃないか！\nその調子で次の修行も頼むぞ！', '全部やりきったな！\n島中に知れ渡るぞ、この快挙！']
+    ? ['7日やり切ったな。\n習慣の入口に片足突っ込んだぞ。\n次の7日も同じ感覚でいけば、\nお前の人生変わるわ。']
     : doneCount >= 5
     ? ['週4日以上が習慣化の鍵！\n良い調子ですっ', '週4日以上が習慣化の鍵！\n良い調子ですっ']
     : doneCount >= 3
@@ -102,6 +102,10 @@ export default function CompletePage() {
           <div style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', fontWeight: 700, lineHeight: 1.7, whiteSpace: 'pre-line' }}>{monkeyLine}</div>
         </div>
       </div>
+
+
+
+
 
       {/* 修行ログ */}
       <div style={{ animation: 'fadeUp 0.5s ease', marginBottom: 14 }}>

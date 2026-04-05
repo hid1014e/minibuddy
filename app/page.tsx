@@ -14,21 +14,24 @@ export default function Home() {
 
   useEffect(() => {
     async function init() {
+      console.log('① init開始');
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('② user=', user?.id ?? 'null');
 
-      // onboarding_done未設定なら必ず2択へ（ログイン状態・プロフィール有無に関わらず）
       const done = localStorage.getItem('onboarding_done');
+      console.log('③ onboarding_done=', done);
       if (!done) {
-        // 未ログインなら匿名認証だけして2択へ
         if (!user) {
+          // 本当に新規ユーザーのみ2択オンボーディング
           const { error } = await supabase.auth.signInAnonymously();
           if (error) return;
+          setShowOnboarding(true);
+          return;
         }
-        setShowOnboarding(true);
-        return;
+        // userがいる＝既存ユーザー → localStorageを修復して通常ルートへ
+        localStorage.setItem('onboarding_done', '1');
       }
 
-      // onboarding_done済み・未ログイン → nickname へ
       if (!user) {
         const { data, error } = await supabase.auth.signInAnonymously();
         if (error || !data.user) return;
@@ -36,8 +39,9 @@ export default function Home() {
         return;
       }
 
-      // プロフィールなし → nickname へ
+      console.log('④ getProfile前');
       const profile = await getProfile(user.id);
+      console.log('⑤ profile=', profile ? 'あり' : 'なし');
       if (!profile) {
         const challenge = await getActiveChallenge();
         const next = challenge ? `/challenge/${challenge.id}` : '/challenge/new';
@@ -45,21 +49,32 @@ export default function Home() {
         return;
       }
 
-      // 既存ユーザー
+      console.log('⑥ getActiveChallenge前');
       const challenge = await getActiveChallenge();
+      console.log('⑦ challenge=', challenge?.id ?? 'なし');
       const target = challenge ? `/challenge/${challenge.id}` : '/challenge/new';
 
-      const show = await shouldShowIchijiBroom();
+      console.log('⑧ shouldShowIchijiBroom前');
+      let show = false;
+      try {
+        const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 4000));
+        show = await Promise.race([shouldShowIchijiBroom(user), timeout]);
+      } catch {
+        show = false;
+      }
+      console.log('⑨ show=', show, 'target=', target);
       if (show) {
-        await grantIchijiBroom();
+        try { await grantIchijiBroom(); } catch {}
         setRedirectTarget(target);
         setShowBroom(true);
       } else {
+        console.log('⑩ router.replace直前');
         router.replace(target);
+        console.log('⑪ router.replace後');
       }
     }
     init();
-  }, [router]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleReceiveBroom() {
     setBroomReceived(true);
@@ -161,7 +176,7 @@ export default function Home() {
           {/* 自由設定 */}
           <button
             onClick={() => {
-              router.push('/nickname?progress=1');
+              router.push('/nickname?progress=1&next=' + encodeURIComponent('/challenge/new?progress=1'));
             }}
             style={{
               padding: '18px 24px',

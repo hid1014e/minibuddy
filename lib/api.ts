@@ -539,8 +539,8 @@ export async function grantIchijiBroom(): Promise<void> {
 }
 
 // 3日以上ログインしていないかチェック（登録後3日以上 & 記録0件）
-export async function shouldShowIchijiBroom(): Promise<boolean> {
-  const user = await ensureAuth();
+export async function shouldShowIchijiBroom(passedUser?: any): Promise<boolean> {
+  const user = passedUser ?? await ensureAuth();
   if (!user) return false;
 
   // localStorageで受け取り済みチェック
@@ -576,6 +576,7 @@ export async function shouldShowIchijiBroom(): Promise<boolean> {
   if (!challenges || challenges.length === 0) return true;
 
   const challengeIds = challenges.map((c: any) => c.id);
+  if (challengeIds.length === 0) return true;
   const { data: days } = await supabase
     .from('mini_challenge_days')
     .select('id')
