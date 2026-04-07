@@ -28,7 +28,13 @@ export default function Home() {
           setShowOnboarding(true);
           return;
         }
-        // userがいる＝既存ユーザー → localStorageを修復して通常ルートへ
+        // userはいるがprofileがない＝セットアップ未完了 → 2択オンボーディングへ
+        const profileCheck = await getProfile(user.id);
+        if (!profileCheck) {
+          setShowOnboarding(true);
+          return;
+        }
+        // userもprofileもある＝既存ユーザー → localStorageを修復して通常ルートへ
         localStorage.setItem('onboarding_done', '1');
       }
 
