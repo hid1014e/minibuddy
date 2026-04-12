@@ -8,6 +8,8 @@ import {
   getMyProfile, getUserMiniTitles, useIchijiBroom,
 } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
+import ResultDetailModal, { ChallengeResult } from '@/app/components/ResultDetailModal';
+import AncientWallButton from '@/app/components/AncientWallButton';
 
 type ChallengeComment = {
   id: string;
@@ -57,6 +59,7 @@ export default function UserProfilePage() {
   const [targetMiniTitles, setTargetMiniTitles] = useState<string[]>([]);
   const [broomUsing, setBroomUsing] = useState(false);
   const [broomResult, setBroomResult] = useState<string | null>(null);
+  const [resultModal, setResultModal] = useState<ChallengeResult | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -177,6 +180,21 @@ export default function UserProfilePage() {
       setBroomResult('アイテムがありません');
     }
     setBroomUsing(false);
+  }
+
+  async function openResultModal(c: Challenge) {
+    const { data: days } = await supabase
+      .from('mini_challenge_days')
+      .select('day_number, plan, status, image_url')
+      .eq('mini_challenge_id', c.id)
+      .order('day_number', { ascending: true });
+    setResultModal({
+      id: c.id,
+      theme: c.theme ?? 'その他',
+      goal: c.goal,
+      started_at: c.started_at,
+      days: days ?? [],
+    });
   }
 
   async function handleBlock() {
@@ -325,6 +343,11 @@ export default function UserProfilePage() {
       {/* 修行履歴 */}
       <div style={{ animation: 'fadeUp 0.4s ease' }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 13, color: '#94a3b8', marginBottom: 10, letterSpacing: '0.05em' }}>修行履歴 📜</div>
+        {history.length > 0 && (
+          <div style={{ marginBottom: 14, display: 'flex', justifyContent: 'center' }}>
+            <AncientWallButton challengeId={history[0].id} />
+          </div>
+        )}
         {history.length === 0 ? (
           <div style={{ background: '#1e2d4a', borderRadius: 14, padding: '20px', textAlign: 'center', border: '1px solid #2d3f5a', color: '#94a3b8', fontSize: 13, fontWeight: 700 }}>
             まだ修行記録がありません
@@ -338,7 +361,7 @@ export default function UserProfilePage() {
               const date = new Date(c.started_at);
               const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
               return (
-                <div key={c.id} style={{ background: '#1e2d4a', borderRadius: 14, padding: '14px', border: `1px solid ${isCompleted ? 'rgba(240,192,64,0.2)' : isActive ? 'rgba(52,211,153,0.2)' : '#2d3f5a'}`, opacity: i > 5 ? 0.7 : 1 }}>
+                <div key={c.id} onClick={() => openResultModal(c)} style={{ background: '#1e2d4a', borderRadius: 14, padding: '14px', border: `1px solid ${isCompleted ? 'rgba(240,192,64,0.2)' : isActive ? 'rgba(52,211,153,0.2)' : '#2d3f5a'}`, opacity: i > 5 ? 0.7 : 1, cursor: 'pointer' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     {themeData && <span style={{ color: themeData.color, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 100, border: `1px solid ${themeData.color}`, background: `${themeData.color}18`, flexShrink: 0 }}>{themeData.icon} {c.theme}</span>}
                     <span style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, marginLeft: 'auto', flexShrink: 0 }}>{dateStr}〜</span>
@@ -430,6 +453,13 @@ export default function UserProfilePage() {
           </div>
         )}
       </div>
+
+      {resultModal && (
+        <ResultDetailModal
+          challenge={resultModal}
+          onClose={() => setResultModal(null)}
+        />
+      )}
     </div>
   );
 }

@@ -10,6 +10,7 @@ import {
 } from '@/lib/api';
 import { MiniChallengeDay } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
+import ResultDetailModal, { type ChallengeResult } from '@/app/components/ResultDetailModal';
 import { calcTodayDayNumber as calcTodayDay } from '@/lib/api';
 
 const THEMES: Record<string, { icon: string; color: string }> = {
@@ -185,6 +186,8 @@ export default function ChallengePage() {
   const [goalInput, setGoalInput] = useState('');
   const [goalSaving, setGoalSaving] = useState(false);
   const [showCrystalOverlay, setShowCrystalOverlay] = useState(false);
+  const [resultChallenge, setResultChallenge] = useState<ChallengeResult | null>(null);
+  const [challengeStartedAt, setChallengeStartedAt] = useState<string | null>(null);
 
   const todayFilled = days.some(d => d.day_number === todayDayNum);
   const canAddToday = todayDayNum <= 7 && !todayFilled && !showForm;
@@ -198,10 +201,14 @@ export default function ChallengePage() {
 
     if (!allDays || allDays.length === 0) { setPosts([]); return; }
 
+    // !inner結合のフィルターが効かないケースに備え、フロントでも絞り込む
+    const activeDays = (allDays as any[]).filter((d: any) => d.mini_challenges?.status === 'active');
+    if (activeDays.length === 0) { setPosts([]); return; }
+
     const { data: blocks } = await supabase.from('user_blocks').select('blocked_id').eq('blocker_id', uid);
     const blockedIds = new Set((blocks ?? []).map((b: any) => b.blocked_id));
 
-    const others = (allDays as any[]).filter((d: any) =>
+    const others = activeDays.filter((d: any) =>
       !blockedIds.has(d.mini_challenges.owner_user_id)
     );
     if (others.length === 0) { setPosts([]); return; }
@@ -333,6 +340,7 @@ export default function ChallengePage() {
     if (challenge?.status === 'completed') { router.replace(`/challenge/${challengeId}/complete`); return; }
     if (challenge?.goal) setGoal(challenge.goal);
     if (challenge?.theme) setChallengeTheme(challenge.theme);
+    if (challenge?.started_at) setChallengeStartedAt(challenge.started_at);
     const dayNum = challenge ? calcTodayDay(challenge.started_at) : 1;
     setTodayDayNum(dayNum);
 
@@ -573,14 +581,36 @@ export default function ChallengePage() {
             const isNotDone = day?.status === 'not_done';
             return (
               <div key={i}>
-                <div style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: day?.image_url ? '12px 12px 0 0' : 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1 }}>
+                <div
+                  onClick={async () => {
+                    if (!isDone && !isNotDone) return;
+                    console.log('DAY CLICK', i+1, isDone, isNotDone);
+                    const { data: allDays } = await supabase
+                      .from('mini_challenge_days')
+                      .select('day_number, plan, status, image_url')
+                      .eq('mini_challenge_id', challengeId)
+                      .order('day_number');
+                    setResultChallenge({
+                      id: challengeId,
+                      theme: theme ?? '修行',
+                      goal: goal ?? null,
+                      started_at: challengeStartedAt ?? new Date(Date.now() - (todayDayNum - 1) * 86400000).toISOString(),
+                      days: (allDays ?? []).map((d: any) => ({
+                        day_number: d.day_number,
+                        plan: d.plan ?? null,
+                        status: d.status,
+                        image_url: d.image_url ?? null,
+                      })),
+                    });
+                  }}
+                  style={{ background: isDone ? 'rgba(240,192,64,0.06)' : isNotDone ? 'rgba(248,113,113,0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isDone ? 'rgba(240,192,64,0.25)' : isNotDone ? 'rgba(248,113,113,0.25)' : '#2d3f5a'}`, borderRadius: day?.image_url ? '12px 12px 0 0' : 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10, opacity: !day && !isToday ? 0.4 : 1, cursor: (isDone || isNotDone) ? 'pointer' : 'default' }}>
                   <div style={{ width: 26, height: 26, borderRadius: 8, background: isDone ? 'linear-gradient(135deg,#f0c040,#c49a20)' : '#0f1729', border: `1px solid ${isDone ? '#f0c040' : isNotDone ? '#f87171' : '#2d3f5a'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Cinzel, serif', fontSize: 11, color: isDone ? '#0f1729' : '#94a3b8', flexShrink: 0 }}>
                     {i + 1}
                   </div>
                   <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: day ? '#f1f5f9' : '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'Nunito, sans-serif' }}>
                     {day?.plan ?? (isToday ? '今日の記録待ち...' : '未記録')}
                   </div>
-                  {day && <button onClick={() => openEditForm(day)} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
+                  {day && <button onClick={(e) => { e.stopPropagation(); openEditForm(day); }} style={{ fontSize: 11, color: '#94a3b8', background: 'transparent', border: '1px solid #2d3f5a', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>編集</button>}
                   <span style={{ fontSize: 13, flexShrink: 0, color: isDone ? '#f0c040' : '#f87171' }}>{isDone ? '✦' : isNotDone ? '✕' : ''}</span>
                 </div>
                 {day?.image_url && (
@@ -682,6 +712,12 @@ export default function ChallengePage() {
         <span style={{ fontSize: 18 }}>💎</span>
         {clapped ? `魔力で応援した！(${clapCount})` : `魔力で応援する (${clapCount})`}
       </button>
+      {resultChallenge && (
+        <ResultDetailModal
+          challenge={resultChallenge}
+          onClose={() => setResultChallenge(null)}
+        />
+      )}
       {showCrystalOverlay && (
         <div
           onClick={() => setShowCrystalOverlay(false)}
