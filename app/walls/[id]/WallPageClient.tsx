@@ -55,6 +55,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [selectedDay, setSelectedDay] = useState<Day | null>(null);
   const [copied, setCopied] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleCopy = async () => {
     const url = window.location.href;
@@ -101,68 +102,120 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
         {/* 石板グリッド */}
         <div style={{ margin: '24px 16px 0' }}>
           <p style={{ fontSize: '10px', letterSpacing: '0.25em', color: '#6b5030', marginBottom: '14px', textAlign: 'center' }}>── 石板を選びて詳細を見よ ──</p>
-          {challenges.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#6b5030', fontFamily: 'Nunito, sans-serif', fontSize: '13px' }}>まだ完了した修行がありません</p>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-              {challenges.map((c) => {
-                const days = daysMap[c.id] ?? [];
-                const doneDays = days.filter(d => d.status === 'done').length;
-                const profile = profileMap[c.owner_user_id];
-                const nickname = profile?.nickname ?? '名無し';
-                const themeData = c.theme ? THEMES[c.theme] : null;
-                const isPerfect = doneDays === 7;
-                return (
-                  <button
-                    key={c.id}
-                    onClick={() => setSelectedChallenge(c)}
-                    style={{
-                      background: isPerfect
-                        ? 'linear-gradient(135deg,#2a1e00,#3d2e08)'
-                        : 'linear-gradient(135deg,#1e1610,#251c12)',
-                      border: isPerfect ? '1px solid #c9a96e' : '1px solid #3a2810',
-                      borderRadius: '2px',
-                      padding: '14px 12px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      boxShadow: isPerfect ? '0 0 12px rgba(201,169,110,0.15)' : 'none',
-                      transition: 'all 0.2s',
-                    }}
-                  >
-                    {/* テーマ */}
-                    <div style={{ fontSize: '10px', color: themeData?.color ?? '#8a6c42', fontFamily: 'Nunito, sans-serif', marginBottom: '6px', letterSpacing: '0.05em' }}>
-                      {themeData ? themeData.icon + ' ' + c.theme : c.theme}
-                    </div>
-                    {/* 目標 */}
-                    <div style={{ fontSize: '12px', color: '#c9a96e', fontFamily: 'Nunito, sans-serif', lineHeight: 1.5, marginBottom: '10px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
-                      {c.goal ?? '（目標なし）'}
-                    </div>
-                    {/* 達成グリッド 7マス */}
-                    <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
-                      {Array.from({ length: 7 }).map((_, i) => {
-                        const day = days.find(d => d.day_number === i + 1);
-                        const isDone = day?.status === 'done';
-                        return (
-                          <div key={i} style={{
-                            width: '100%', aspectRatio: '1',
-                            background: isDone ? '#c9a96e' : '#2a1e10',
-                            border: isDone ? '1px solid #e8c98a' : '1px solid #3a2810',
-                            borderRadius: '1px',
-                          }}/>
-                        );
-                      })}
-                    </div>
-                    {/* ニックネーム・日付・達成数 */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '10px', color: '#6b5030', fontFamily: 'Nunito, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{nickname}</span>
-                      <span style={{ fontSize: '11px', color: isPerfect ? '#f0c060' : '#8a6c42', fontFamily: 'Cinzel, serif', flexShrink: 0 }}>{doneDays}/7</span>
-                    </div>
-                    <div style={{ fontSize: '9px', color: '#4a3520', fontFamily: 'Nunito, sans-serif', marginTop: '3px' }}>{formatDate(c.started_at)}〜</div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
+          {/* 石板を探す */}
+          <div style={{ marginBottom: '14px', position: 'relative' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="石板を探す… （名前・目標・テーマ）"
+              style={{
+                width: '100%', boxSizing: 'border-box',
+                background: 'rgba(26,18,8,0.8)',
+                border: '1px solid #4a3520',
+                borderRadius: '2px',
+                padding: '10px 14px 10px 36px',
+                color: '#c9a96e',
+                fontFamily: 'Nunito, sans-serif',
+                fontSize: '12px',
+                letterSpacing: '0.05em',
+                outline: 'none',
+              }}
+            />
+            <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '14px', opacity: 0.5, pointerEvents: 'none' }}>𓂀</span>
+          </div>
+          {(() => {
+            const q = searchQuery.trim().toLowerCase();
+            const filtered = q ? challenges.filter(c => {
+              const profile = profileMap[c.owner_user_id];
+              const nick = (profile?.nickname || '匿名').toLowerCase();
+              return (
+                nick.includes(q) ||
+                (c.goal ?? '').toLowerCase().includes(q) ||
+                (c.theme ?? '').toLowerCase().includes(q)
+              );
+            }) : challenges;
+            return filtered.length === 0 ? (
+              <p style={{ textAlign: 'center', color: '#6b5030', fontFamily: 'Nunito, sans-serif', fontSize: '13px', padding: '20px 0' }}>
+                {q ? '石板が見つからぬ…' : 'まだ完了した修行がありません'}
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                {filtered.map((c) => {
+                  const days = daysMap[c.id] ?? [];
+                  const doneDays = days.filter(d => d.status === 'done').length;
+                  const profile = profileMap[c.owner_user_id];
+                  const nickname = profile?.nickname || '匿名';
+                  const themeData = c.theme ? THEMES[c.theme] : null;
+                  const isPerfect = doneDays === 7;
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelectedChallenge(c)}
+                      style={{
+                        background: isPerfect
+                          ? 'linear-gradient(135deg,#2a1e00,#3d2e08)'
+                          : 'linear-gradient(135deg,#1e1610,#251c12)',
+                        border: isPerfect ? '1px solid #c9a96e' : '1px solid #3a2810',
+                        borderRadius: '2px',
+                        padding: '14px 12px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        boxShadow: isPerfect ? '0 0 12px rgba(201,169,110,0.15)' : 'none',
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      <div style={{ fontSize: '10px', color: themeData?.color ?? '#8a6c42', fontFamily: 'Nunito, sans-serif', marginBottom: '6px', letterSpacing: '0.05em' }}>
+                        {themeData ? themeData.icon + ' ' + c.theme : c.theme}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#c9a96e', fontFamily: 'Nunito, sans-serif', lineHeight: 1.5, marginBottom: '10px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any }}>
+                        {c.goal ?? '（目標なし）'}
+                      </div>
+                      {/* 達成グリッド：古代壁画風 */}
+                      <div style={{ display: 'flex', gap: '3px', marginBottom: '8px' }}>
+                        {Array.from({ length: 7 }).map((_, i) => {
+                          const day = days.find(d => d.day_number === i + 1);
+                          const isDone = day?.status === 'done';
+                          return (
+                            <div key={i} style={{
+                              width: '100%', aspectRatio: '1',
+                              background: isDone
+                                ? 'radial-gradient(circle at 40% 35%, #d4a843 0%, #8a5c18 55%, #4a2e08 100%)'
+                                : 'linear-gradient(135deg, #1a1208 0%, #120e06 100%)',
+                              border: isDone ? '1px solid #b8882a' : '1px solid #2a1e0a',
+                              borderRadius: '1px',
+                              boxShadow: isDone ? 'inset 0 1px 0 rgba(255,220,120,0.3), 0 0 4px rgba(180,130,30,0.2)' : 'inset 0 1px 0 rgba(0,0,0,0.5)',
+                              position: 'relative',
+                              overflow: 'hidden',
+                            }}>
+                              {isDone && (
+                                <div style={{
+                                  position: 'absolute', inset: 0,
+                                  backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 3px)',
+                                }}/>
+                              )}
+                              {!isDone && (
+                                <div style={{
+                                  position: 'absolute', inset: 0,
+                                  backgroundImage: 'repeating-linear-gradient(30deg, transparent, transparent 3px, rgba(255,255,255,0.02) 3px, rgba(255,255,255,0.02) 4px)',
+                                }}/>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '10px', color: '#6b5030', fontFamily: 'Nunito, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{nickname}</span>
+                        <span style={{ fontSize: '11px', color: isPerfect ? '#f0c060' : '#8a6c42', fontFamily: 'Cinzel, serif', flexShrink: 0 }}>{doneDays}/7</span>
+                      </div>
+                      <div style={{ fontSize: '9px', color: '#4a3520', fontFamily: 'Nunito, sans-serif', marginTop: '3px' }}>{(new Date(c.started_at).getMonth() + 1) + '/' + new Date(c.started_at).getDate()}〜</div>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
         </div>
 
         {/* 共有ボタン */}
@@ -185,7 +238,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
         const days = daysMap[selectedChallenge.id] ?? [];
         const doneDays = days.filter(d => d.status === 'done').length;
         const profile = profileMap[selectedChallenge.owner_user_id];
-        const nickname = profile?.nickname ?? '名無し';
+        const nickname = profile?.nickname || '匿名';
         const monkeyComment = MONKEY_COMMENT(doneDays);
         const startDate = new Date(selectedChallenge.started_at);
         const formatDateFull = (d: Date) => d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
@@ -235,7 +288,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
               <div style={{ background: 'linear-gradient(135deg,#1e1610,#2a1e10)', border: '1px solid #4a3520', borderRadius: '2px', padding: '14px 16px', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
                 <span style={{ fontSize: '24px', flexShrink: 0 }}>🐵</span>
                 <div>
-                  <p style={{ margin: '0 0 4px', fontSize: '9px', letterSpacing: '0.2em', color: '#6b5030' }}>修行監督・猿の言葉</p>
+                  <p style={{ margin: '0 0 4px', fontSize: '9px', letterSpacing: '0.2em', color: '#6b5030' }}>リアプレイ猿の言葉</p>
                   <p style={{ margin: 0, fontSize: '12px', fontFamily: 'Nunito, sans-serif', color: '#c9a96e', lineHeight: 1.8, whiteSpace: 'pre-line' }}>{monkeyComment}</p>
                 </div>
               </div>
