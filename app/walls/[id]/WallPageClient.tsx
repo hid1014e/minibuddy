@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 
 import { useState } from 'react';
 
@@ -54,6 +55,7 @@ const THEMES: Record<string, { icon: string; color: string }> = {
 export default function WallPageClient({ challenges, daysMap, profileMap }: Props) {
   const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(null);
   const [selectedDay, setSelectedDay] = useState<Day | null>(null);
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -82,6 +84,18 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
 
   return (
     <div style={{ minHeight: '100vh', background: '#1a1208', color: '#c9a96e', fontFamily: "'Cinzel', serif", position: 'relative', overflow: 'hidden' }}>
+      <button
+        onClick={() => router.back()}
+        style={{
+          display: 'flex', alignItems: 'center', gap: '6px',
+          background: 'transparent', border: 'none',
+          color: '#6b5030', fontFamily: 'Nunito, sans-serif',
+          fontSize: '13px', cursor: 'pointer',
+          padding: '14px 16px 0', letterSpacing: '0.05em',
+        }}
+      >
+        ◂ 修行履歴へ戻る
+      </button>
       <div style={{ position: 'fixed', inset: 0, backgroundImage: 'radial-gradient(ellipse at 20% 20%,rgba(80,55,20,.3) 0%,transparent 60%),radial-gradient(ellipse at 80% 80%,rgba(60,40,10,.3) 0%,transparent 60%)', pointerEvents: 'none', zIndex: 0 }}/>
       <div style={{ position: 'relative', zIndex: 2, maxWidth: '480px', margin: '0 auto', padding: '0 0 80px' }}>
 
@@ -260,13 +274,13 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
 
               {/* 7日グリッド */}
               <p style={{ fontSize: '10px', letterSpacing: '0.2em', color: '#6b5030', marginBottom: '10px' }}>── 刻まれし七日間 ──</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '16px', width: '100%' }}>
                 {Array.from({ length: 7 }).map((_, i) => {
                   const day = days.find(d => d.day_number === i + 1);
                   const isDone = day?.status === 'done';
                   return (
                     <button key={i} onClick={() => day && setSelectedDay(day)}
-                      style={{ aspectRatio: '1', background: isDone ? 'linear-gradient(135deg,#3d2e00,#5a4400)' : 'linear-gradient(135deg,#1e1610,#251c12)', border: isDone ? '1px solid #c9a96e' : '1px solid #3a2810', borderRadius: '2px', cursor: day ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '4px 2px' }}>
+                      style={{ aspectRatio: '1', minWidth: 0, background: isDone ? 'linear-gradient(135deg,#3d2e00,#5a4400)' : 'linear-gradient(135deg,#1e1610,#251c12)', border: isDone ? '1px solid #c9a96e' : '1px solid #3a2810', borderRadius: '2px', cursor: day ? 'pointer' : 'default', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '4px 2px' }}>
                       <span style={{ fontSize: '16px', lineHeight: 1, filter: isDone ? 'none' : 'grayscale(1) opacity(.3)' }}>{isDone ? '🔥' : '💤'}</span>
                       <span style={{ fontSize: '8px', color: isDone ? '#c9a96e' : '#4a3520', fontFamily: 'Nunito, sans-serif' }}>Day{i + 1}</span>
                     </button>
