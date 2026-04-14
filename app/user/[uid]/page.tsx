@@ -211,7 +211,7 @@ export default function UserProfilePage() {
   }
 
   const titleData = getTitle(streakWeeks);
-  const completedChallenges = history.filter(c => c.status === 'completed');
+  const completedChallenges = history.filter(c => c.status === 'done');
   const totalDone = completedChallenges.reduce((acc, c) => acc + c.done, 0);
   const totalDays = completedChallenges.reduce((acc, c) => acc + c.total, 0);
   const overallRate = totalDays > 0 ? Math.round((totalDone / totalDays) * 100) : 0;
