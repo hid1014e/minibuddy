@@ -114,7 +114,7 @@ export async function saveDay(
 export async function completeChallenge(challengeId: string) {
   await supabase
     .from('mini_challenges')
-    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .update({ status: 'done', completed_at: new Date().toISOString() })
     .eq('id', challengeId);
 }
 
@@ -124,7 +124,7 @@ export async function resetAndStartNew(): Promise<void> {
   // 既存チャレンジを全部completedに（念のため）
   await supabase
     .from('mini_challenges')
-    .update({ status: 'completed' })
+    .update({ status: 'done' })
     .eq('owner_user_id', user.id)
     .eq('status', 'active');
 }
