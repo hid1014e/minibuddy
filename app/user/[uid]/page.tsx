@@ -356,7 +356,7 @@ export default function UserProfilePage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {history.map((c, i) => {
               const themeData = c.theme ? THEMES[c.theme] : null;
-              const isCompleted = c.status === 'completed';
+              const isCompleted = c.status === 'done';
               const isActive = c.status === 'active';
               const date = new Date(c.started_at);
               const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
