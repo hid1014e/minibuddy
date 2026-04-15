@@ -337,7 +337,7 @@ export default function ChallengePage() {
     setClapCount(await getTodayClapCount());
 
     const { data: challenge } = await supabase.from('mini_challenges').select().eq('id', challengeId).maybeSingle();
-    if (challenge?.status === 'completed') { router.replace(`/challenge/${challengeId}/complete`); return; }
+    if (challenge?.status === 'done') { router.replace(`/challenge/${challengeId}/complete`); return; }
     if (challenge?.goal) setGoal(challenge.goal);
     if (challenge?.theme) setChallengeTheme(challenge.theme);
     if (challenge?.started_at) setChallengeStartedAt(challenge.started_at);
