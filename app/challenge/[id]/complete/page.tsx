@@ -85,7 +85,11 @@ export default function CompletePage() {
 
         {/* 2: 猿コメント */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(15,23,41,0.5)', borderRadius: 12, padding: '12px 14px', marginBottom: 20, textAlign: 'left' }}>
-          <div style={{ fontSize: 28, animation: 'monkeyBounce 2s ease-in-out infinite', flexShrink: 0 }}>🐒</div>
+          <img
+            src="https://hgdwzaqujzjrozcryprg.supabase.co/storage/v1/object/public/post-images/characters/monkey-wizard.png"
+            alt="リアプレイ猿"
+            style={{ width: 52, height: 52, objectFit: 'contain', flexShrink: 0, animation: 'monkeyBounce 2s ease-in-out infinite', filter: 'drop-shadow(0 2px 6px rgba(0,0,0,0.5))' }}
+          />
           <div style={{ fontSize: 13, color: '#f1f5f9', fontFamily: 'Nunito, sans-serif', fontWeight: 700, lineHeight: 1.6 }}>{monkeyLine}</div>
         </div>
 

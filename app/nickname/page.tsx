@@ -83,7 +83,9 @@ function NicknameForm() {
       )}
 
       <div style={{ textAlign: 'center', marginBottom: 32, animation: 'fadeUp 0.5s ease' }}>
-        <div style={{ fontSize: 60, animation: 'float 3s ease-in-out infinite', display: 'inline-block', marginBottom: 14 }}>🧙</div>
+        <div style={{ animation: 'float 3s ease-in-out infinite', display: 'inline-block', marginBottom: 14 }}>
+          <img src="https://hgdwzaqujzjrozcryprg.supabase.co/storage/v1/object/public/post-images/characters/screen%203.png?v=2" alt="" style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 0 16px rgba(201,168,76,0.4))' }} />
+        </div>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 20, color: '#f1f5f9', marginBottom: 8 }}>ようこそ、Hagritへ</div>
         <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8, margin: 0 }}>
           仲間に表示されるニックネームを<br />決めてください（10文字以内）

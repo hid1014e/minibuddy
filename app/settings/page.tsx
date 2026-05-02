@@ -152,7 +152,7 @@ export default function SettingsPage() {
             {blockList.map(b => (
               <div key={b.userId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0f1729', borderRadius: 10, padding: '10px 14px', border: '1px solid #2d3f5a' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>🧙</span>
+                  <img src="https://hgdwzaqujzjrozcryprg.supabase.co/storage/v1/object/public/post-images/characters/screen%203.png?v=2" alt="" style={{ width: 24, height: 24, objectFit: 'contain' }} />
                   <span style={{ fontFamily: 'Nunito, sans-serif', fontSize: 14, fontWeight: 800, color: '#f1f5f9' }}>{b.nickname}</span>
                 </div>
                 <button

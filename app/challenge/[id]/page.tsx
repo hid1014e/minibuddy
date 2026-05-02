@@ -11,6 +11,7 @@ import {
 import { MiniChallengeDay } from '@/lib/types';
 import { supabase } from '@/lib/supabase';
 import ResultDetailModal, { type ChallengeResult } from '@/app/components/ResultDetailModal';
+import HatModal from '@/app/components/HatModal';
 import { calcTodayDayNumber as calcTodayDay } from '@/lib/api';
 
 const THEMES: Record<string, { icon: string; color: string }> = {
@@ -154,6 +155,7 @@ function CommentSection({ postId, myUserId }: { postId: string; myUserId: string
   );
 }
 
+
 export default function ChallengePage() {
   const router = useRouter();
   const params = useParams();
@@ -186,6 +188,7 @@ export default function ChallengePage() {
   const [goalInput, setGoalInput] = useState('');
   const [goalSaving, setGoalSaving] = useState(false);
   const [showCrystalOverlay, setShowCrystalOverlay] = useState(false);
+  const [showHatModal, setShowHatModal] = useState(false);
   const [resultChallenge, setResultChallenge] = useState<ChallengeResult | null>(null);
   const [challengeStartedAt, setChallengeStartedAt] = useState<string | null>(null);
 
@@ -357,9 +360,18 @@ export default function ChallengePage() {
       setMyNickname(profile?.nickname ?? '');
       await loadPosts(dayNum, user.id);
     }
+
   }, [challengeId, router, loadPosts]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reset_hat') === '1') {
+      localStorage.removeItem('hat_shown');
+    }
+  }, []);
 
   function openNewForm() { setEditingDay(null); setPlan(''); setStatus(null); setNextStep(''); setImageFile(null); setImagePreview(null); setShowForm(true); }
   function openEditForm(day: MiniChallengeDay) { setEditingDay(day.day_number); setPlan(day.plan); setStatus(day.status); setNextStep(day.next_step ?? ''); setImageFile(null); setImagePreview(day.image_url ?? null); setShowForm(true); }
@@ -374,6 +386,14 @@ export default function ChallengePage() {
     else if (imagePreview?.startsWith('http')) imageUrl = imagePreview;
     await saveDay(challengeId, targetDay, plan.trim(), status, nextStep.trim() || undefined, imageUrl);
     if (targetDay === 7) { await completeChallenge(challengeId); router.replace(`/challenge/${challengeId}/complete`); return; }
+    if (status === 'done') {
+      const hatShown = localStorage.getItem('hat_shown');
+      if (!hatShown) {
+        await load(); closeForm(); setSaving(false);
+        setShowHatModal(true);
+        return;
+      }
+    }
     await load(); closeForm(); setSaving(false);
   }
 
@@ -421,7 +441,7 @@ export default function ChallengePage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {myNickname && (
             <button onClick={() => router.push('/settings')} style={{ background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 100, padding: '5px 12px', fontSize: 12, color: '#f0c040', fontWeight: 800, fontFamily: 'Nunito, sans-serif', cursor: 'pointer' }}>
-              🧙 {myNickname}
+              <img src="https://hgdwzaqujzjrozcryprg.supabase.co/storage/v1/object/public/post-images/characters/screen%203.png?v=2" alt="" style={{ width: 18, height: 18, objectFit: 'contain', verticalAlign: 'middle' }} /> {myNickname}
             </button>
           )}
         </div>
@@ -717,6 +737,12 @@ export default function ChallengePage() {
           challenge={resultChallenge}
           onClose={() => setResultChallenge(null)}
         />
+      )}
+      {showHatModal && (
+        <HatModal onDismiss={() => {
+          localStorage.setItem('hat_shown', '1');
+          setShowHatModal(false);
+        }} />
       )}
       {showCrystalOverlay && (
         <div

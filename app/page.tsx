@@ -35,6 +35,11 @@ export default function Home() {
           return;
         }
         // userもprofileもある＝既存ユーザー → localStorageを修復して通常ルートへ
+        // quick-start保存中は介入しない
+        if (localStorage.getItem('qs_in_progress')) {
+          console.log('③ qs_in_progress中 → skip');
+          return;
+        }
         localStorage.setItem('onboarding_done', '1');
       }
 
