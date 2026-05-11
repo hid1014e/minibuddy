@@ -193,7 +193,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
             const q = searchQuery.trim().toLowerCase();
             const filtered = q ? challenges.filter(c => {
               const profile = profileMap[c.owner_user_id];
-              const nick = (profile?.nickname || '匿名').toLowerCase();
+              const nick = (profile?.nickname || '名もなき修行者').toLowerCase();
               return nick.includes(q) || (c.goal ?? '').toLowerCase().includes(q) || (c.theme ?? '').toLowerCase().includes(q);
             }) : challenges;
 
@@ -209,7 +209,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
                   const days = daysMap[c.id] ?? [];
                   const doneDays = days.filter(d => d.status === 'done').length;
                   const profile = profileMap[c.owner_user_id];
-                  const nickname = profile?.nickname || '匿名';
+                  const nickname = profile?.nickname || '名もなき修行者';
                   const themeData = c.theme ? THEMES[c.theme] : null;
                   const isPerfect = doneDays === 7;
                   return (
@@ -330,7 +330,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
           {HIEROGLYPHS.slice(3).join(' ')}
         </div>
         <p style={{ textAlign: 'center', fontSize: '10px', color: S.textDim, fontFamily: S.fontHeader, letterSpacing: '0.15em', marginTop: '12px', textTransform: 'uppercase' }}>
-          Hagrit — 7日間の修行記録
+          ブラックジョーク — 7日間の修行記録
         </p>
       </div>
 
@@ -339,7 +339,7 @@ export default function WallPageClient({ challenges, daysMap, profileMap }: Prop
         const days = daysMap[selectedChallenge.id] ?? [];
         const doneDays = days.filter(d => d.status === 'done').length;
         const profile = profileMap[selectedChallenge.owner_user_id];
-        const nickname = profile?.nickname || '匿名';
+        const nickname = profile?.nickname || '名もなき修行者';
         const monkeyComment = MONKEY_COMMENT(doneDays);
         const startDate = new Date(selectedChallenge.started_at);
         const formatDateFull = (d: Date) => d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';

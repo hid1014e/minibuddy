@@ -53,7 +53,7 @@ function NicknameForm() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)', marginBottom: 12 }}>Hagrit</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)', marginBottom: 12 }}>ブラックジョーク</div>
         <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 700 }}>読み込み中...</div>
       </div>
     </div>
@@ -67,7 +67,7 @@ function NicknameForm() {
       `}</style>
 
       <div style={{ textAlign: 'center', marginBottom: showProgress ? 16 : 32, animation: 'fadeUp 0.4s ease' }}>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)' }}>Hagrit</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)' }}>ブラックジョーク</div>
       </div>
 
       {showProgress && (
@@ -86,7 +86,7 @@ function NicknameForm() {
         <div style={{ animation: 'float 3s ease-in-out infinite', display: 'inline-block', marginBottom: 14 }}>
           <img src="https://hgdwzaqujzjrozcryprg.supabase.co/storage/v1/object/public/post-images/characters/screen%203.png?v=2" alt="" style={{ width: 100, height: 100, objectFit: 'contain', filter: 'drop-shadow(0 0 16px rgba(201,168,76,0.4))' }} />
         </div>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 20, color: '#f1f5f9', marginBottom: 8 }}>ようこそ、Hagritへ</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 20, color: '#f1f5f9', marginBottom: 8 }}>ようこそ、ブラックジョークへ</div>
         <p style={{ fontSize: 14, color: '#94a3b8', lineHeight: 1.8, margin: 0 }}>
           仲間に表示されるニックネームを<br />決めてください（10文字以内）
         </p>

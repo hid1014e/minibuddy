@@ -135,7 +135,7 @@ export default function Home() {
             fontFamily: 'Cinzel, serif', fontSize: '32px',
             color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)',
             letterSpacing: '0.05em',
-          }}>Hagrit</div>
+          }}>ブラックジョーク</div>
         </div>
 
         <div style={{
@@ -144,7 +144,7 @@ export default function Home() {
           fontFamily: 'Nunito, sans-serif', fontWeight: 700,
           lineHeight: 1.7,
         }}>
-          7日間、仲間の気配を感じながら<br />習慣をやり切ろう
+          人は大体、5分なら動けます。<br />科学的根拠は特にないけど。
         </div>
 
         <div style={{
@@ -177,7 +177,7 @@ export default function Home() {
               fontFamily: 'Cinzel, serif', letterSpacing: '0.05em',
             }}>おすすめ</div>
             <div style={{ fontSize: '20px', fontWeight: 800, marginBottom: '4px' }}>
-              ⏱ まずは5分だけやってみる
+              ⏱ とりあえず5分やってみる（罠）
             </div>
             <div style={{ fontSize: '13px', color: '#c4a8f0', fontWeight: 600 }}>
               タイマーを使って今すぐスタート
@@ -326,7 +326,7 @@ export default function Home() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)', marginBottom: 12 }}>Hagrit</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)', marginBottom: 12 }}>ブラックジョーク</div>
         <div style={{ color: '#94a3b8', fontSize: 14, fontWeight: 700 }}>読み込み中...</div>
       </div>
     </div>

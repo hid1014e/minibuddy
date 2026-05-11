@@ -219,7 +219,7 @@ export default function UserProfilePage() {
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#120b04' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Cinzel Decorative, Cinzel, serif', fontSize: 28, color: '#c9a84c', textShadow: '0 0 20px rgba(201,168,76,0.5)', marginBottom: 12, letterSpacing: '0.1em' }}>Hagrit</div>
+        <div style={{ fontFamily: 'Cinzel Decorative, Cinzel, serif', fontSize: 28, color: '#c9a84c', textShadow: '0 0 20px rgba(201,168,76,0.5)', marginBottom: 12, letterSpacing: '0.1em' }}>ブラックジョーク</div>
         <div style={{ color: '#8a7055', fontSize: 14, fontFamily: 'Nunito, sans-serif' }}>記録を読み解いております...</div>
       </div>
     </div>
@@ -252,7 +252,7 @@ export default function UserProfilePage() {
           onMouseEnter={e => { (e.target as HTMLButtonElement).style.color = '#c9a84c'; (e.target as HTMLButtonElement).style.borderColor = '#c9a84c'; }}
           onMouseLeave={e => { (e.target as HTMLButtonElement).style.color = '#8a7055'; (e.target as HTMLButtonElement).style.borderColor = '#5a3e1b'; }}
         >← 戻る</button>
-        <div style={{ fontFamily: 'Cinzel Decorative, Cinzel, serif', fontSize: 18, color: '#c9a84c', letterSpacing: '0.15em', textShadow: '0 0 12px rgba(201,168,76,0.3)' }}>Hagrit</div>
+        <div style={{ fontFamily: 'Cinzel Decorative, Cinzel, serif', fontSize: 18, color: '#c9a84c', letterSpacing: '0.15em', textShadow: '0 0 12px rgba(201,168,76,0.3)' }}>ブラックジョーク</div>
       </div>
 
       {/* ═══ 英雄の石碑 プロフィールカード ═══ */}

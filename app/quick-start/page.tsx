@@ -286,7 +286,7 @@ export default function QuickStartPage() {
           </button>
         ) : (
           <div className="flex flex-col items-center gap-4 w-full max-w-xs">
-            <p className="text-white/40 text-sm tracking-wide">集中して！ずっとここにいるよ 🕯️</p>
+            <p className="text-white/40 text-sm tracking-wide">引っかかりましたね。でももう始まってます。</p>
             <button
               onClick={stopEarly}
               className="w-full py-3 rounded-2xl text-white/60 text-base font-medium border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] hover:text-white/80 active:scale-95 transition-all duration-150"
@@ -353,9 +353,9 @@ export default function QuickStartPage() {
               marginBottom: '8px',
             }}
           >
-            お疲れ様でした☕️
+            お、やりましたね。えらい。
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px' }}>1日目を刻んだ</p>
+          <p style={{ color: 'rgba(255,255,255,0.35)', fontSize: '14px' }}>1日目、まんまと続きました。</p>
         </div>
 
         {/* ステータスカード */}

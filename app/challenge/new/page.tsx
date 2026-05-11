@@ -48,7 +48,7 @@ function NewChallengeForm() {
 
       <div style={{ textAlign: 'center', marginBottom: showProgress ? 16 : 28, animation: 'fadeUp 0.4s ease' }}>
         <div style={{ fontFamily: 'Cinzel, serif', fontSize: 30, color: '#f0c040', textShadow: '0 0 20px rgba(240,192,64,0.5)' }}>
-          Hagrit
+          ブラックジョーク
         </div>
       </div>
 

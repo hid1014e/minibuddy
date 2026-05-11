@@ -114,7 +114,7 @@ export default function MirrorButton() {
             </div>
 
             <p style={{ padding: '10px 20px 4px', fontSize: '11px', color: '#6b5590', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-              Hagrit の世界に訪れるもの
+              ブラックジョーク の世界に訪れるもの
             </p>
 
             {(Object.entries(MIRROR_DATA) as [string, { icon: string; name: string; desc: string }[]][]).map(([section, items], si) => (

@@ -437,7 +437,7 @@ export default function ChallengePage() {
       `}</style>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 24, color: '#f0c040', textShadow: '0 0 15px rgba(240,192,64,0.4)' }}>Hagrit</div>
+        <div style={{ fontFamily: 'Cinzel, serif', fontSize: 24, color: '#f0c040', textShadow: '0 0 15px rgba(240,192,64,0.4)' }}>ブラックジョーク</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {myNickname && (
             <button onClick={() => router.push('/settings')} style={{ background: 'rgba(240,192,64,0.08)', border: '1px solid rgba(240,192,64,0.25)', borderRadius: 100, padding: '5px 12px', fontSize: 12, color: '#f0c040', fontWeight: 800, fontFamily: 'Nunito, sans-serif', cursor: 'pointer' }}>

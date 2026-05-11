@@ -12,10 +12,14 @@ export default async function WallPage({ params }: { params: Promise<{ id: strin
   await params; // Next.js 15 requires awaiting params
 
   // 全完了チャレンジを取得（最新100件）
+  // 削除済み本垢を除外
+  const EXCLUDED_USER_IDS = ['588333a1-8ba4-4afc-9d65-711d1439dce2'];
+
   const { data: challenges } = await supabase
     .from('mini_challenges')
     .select('id, theme, goal, status, started_at, owner_user_id')
     .eq('status', 'done')
+    .not('owner_user_id', 'in', '(' + EXCLUDED_USER_IDS.join(',') + ')')
     .order('started_at', { ascending: false })
     .limit(100);
 

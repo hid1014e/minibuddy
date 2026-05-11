@@ -3,7 +3,7 @@ import './globals.css';
 import MirrorButton from './components/MirrorButton';
 
 export const metadata: Metadata = {
-  title: 'Hagrit',
+  title: 'ブラックジョーク',
   description: '7日チャレンジ',
 };
 
